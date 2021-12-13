@@ -57,10 +57,12 @@ def get_quantized_student_data(student_df,gender_map, race_map, region_map):
     """
     S = student_df.shape[0]
     
-    gender_quant = {g:student_df["gender_enum"].value_counts().to_dict().get(g,                             0)/S for g in gender_map.values()}
+    gender_quant = {g:student_df["gender_enum"].value_counts().to_dict().get(g,
+    										0)/S for g in gender_map.values()}
     race_quant = {g:student_df["race_enum"].value_counts().to_dict().get(g,
-                                    0)/S for g in race_map.values()}
-    region_quant = {g:student_df["region_enum"].value_counts().to_dict().get(g,                             0)/S for g in region_map.values()}
+                         					0)/S for g in race_map.values()}
+    region_quant = {g:student_df["region_enum"].value_counts().to_dict().get(g,                             
+    										0)/S for g in region_map.values()}
 
     return gender_quant, race_quant, region_quant
 
@@ -71,10 +73,12 @@ def get_quantized_art_data(art_df,gender_map, race_map, region_map):
     """
     A = art_df.shape[0]
 
-    gender_quant = {g:art_df["gender_enum"].value_counts().to_dict().get(g,0)/A                             for g in gender_map.values()}
+    gender_quant = {g:art_df["gender_enum"].value_counts().to_dict().get(g,0)/A 
+    										for g in gender_map.values()}
     race_quant = {g:art_df["race_enum"].value_counts().to_dict().get(g,0)/A 
-                                    for g in race_map.values()}
-    region_quant = {g:art_df["region_enum"].value_counts().to_dict().get(g,0)/A                             for g in region_map.values()}
+                                    		for g in race_map.values()}
+    region_quant = {g:art_df["region_enum"].value_counts().to_dict().get(g,0)/A 
+    										for g in region_map.values()}
 
     return gender_quant, race_quant, region_quant
 
@@ -83,7 +87,9 @@ def get_building_capacity_df():
     """
     Return dataframe of art capacity by building.
     """
-    art_df = pd.read_csv("../data/2021_05_10_Artist_Subject_Donor_Data_Cleaned.csv", index_col = 0)
+    art_df = pd.read_csv(
+    	"../data/2021_05_10_Artist_Subject_Donor_Data_Cleaned.csv", 
+    	index_col = 0)
     art_df = art_df[~art_df["homeloc"].isna()]
     art_df = art_df[art_df["homeloc"] != "Crozier Fine Arts"]
 
@@ -121,10 +127,12 @@ def get_art_capacity_with_downsampling(art_df):
     
     # Add capacity from art_tuple_dict.
     for i in art_capacity_df.index:
-        art_capacity_df.loc[i,"capacity"] = art_tuple_dict[art_capacity_df.loc[i,"tuples"]]    
+        art_capacity_df.loc[i,"capacity"] = art_tuple_dict[
+        							art_capacity_df.loc[i,"tuples"]]    
 
     # Drop duplicate values.
-    art_capacity_df.drop_duplicates(subset = ["tuples"], keep = "first", inplace = True)
+    art_capacity_df.drop_duplicates(subset = ["tuples"], keep = "first", 
+    	inplace = True)
     art_capacity_df.reset_index(drop = True, inplace = True)
 
     # Assert that all art pieces are being counted.
@@ -164,40 +172,55 @@ def compute_cost_matrix(art_df,
 
     for i in range(len(hall_files)):
 
-        df = pd.read_csv("../data/filled_buildings/{}_students.csv".format(hall_files[i]), index_col = 0)
-        mode = np.array(df[["gender_enum","race_enum","region_enum"]].mode()).reshape(-1,3)
+        df = pd.read_csv("../data/filled_buildings/{}_students.csv".format(
+        	hall_files[i]), index_col = 0)
+        mode = np.array(df[["gender_enum","race_enum","region_enum"]].mode()
+        	).reshape(-1,3)
 
-        diff = np.where((df[["gender_enum","race_enum","region_enum"]].values - mode) == 0,0,1)
+        diff = np.where((df[["gender_enum","race_enum","region_enum"]
+        	].values - mode) == 0,0,1)
 
-        # Get dataframe of quantized gender, race, region for students in building.
+        # Get df of quantized gender, race, region for students in building.
         df_quant_s = pd.DataFrame()
-        df_quant_s["gender"] = [gender_quant_s.get(x,0) for x in df["gender_enum"]]
-        df_quant_s["race"] = [race_quant_s.get(x,0) for x in df["race_enum"]]
-        df_quant_s["region"] = [region_quant_s.get(x,0) for x in df["region_enum"]]
+        df_quant_s["gender"] = [gender_quant_s.get(x,0) for x in df[
+        											"gender_enum"]]
+        df_quant_s["race"] = [race_quant_s.get(x,0) for x in df[
+        											"race_enum"]]
+        df_quant_s["region"] = [region_quant_s.get(x,0) for x in df[
+        											"region_enum"]]
 
         df_quant_a = pd.DataFrame()
-        df_quant_a["gender"] = [gender_quant_a.get(x,0) for x in art_df["gender_enum"]]
-        df_quant_a["race"] = [race_quant_a.get(x,0) for x in art_df["race_enum"]]
-        df_quant_a["region"] = [region_quant_a.get(x,0) for x in art_df["region_enum"]]
+        df_quant_a["gender"] = [gender_quant_a.get(x,0) for x in art_df[
+        											"gender_enum"]]
+        df_quant_a["race"] = [race_quant_a.get(x,0) for x in art_df[
+        											"race_enum"]]
+        df_quant_a["region"] = [region_quant_a.get(x,0) for x in art_df[
+        											"region_enum"]]
 
         mode_quant = np.array([gender_quant_s.get(mode[0][0],0),
                                race_quant_s.get(mode[0][0],0),
-                               region_quant_s.get(mode[0][0],0)]).reshape(-1,df_quant_s.shape[1])
+                               region_quant_s.get(mode[0][0],0)]
+                               				).reshape(-1,df_quant_s.shape[1])
         
     
         # Compute norms across student in buildings.
-        building_norms = np.linalg.norm(diff * (df_quant_s - mode_quant).values, axis = 1)
-        building_norms = np.exp(alpha * building_norms / building_norms.sum(axis = 0))
+        building_norms = np.linalg.norm(diff * (df_quant_s - mode_quant
+        										).values, axis = 1)
+        building_norms = np.exp(alpha * building_norms / building_norms.sum(
+        															axis = 0))
         building_norms = building_norms.reshape(-1, building_norms.shape[0])
 
 
         s_enum = df[["gender_enum","race_enum","region_enum"]].values
         a_enum = art_df[["gender_enum","race_enum","region_enum"]].values
 
-        art_diff = np.where(s_enum - a_enum.reshape(a_enum.shape[0],-1,a_enum.shape[1]) == 0,0,1)
+        art_diff = np.where(s_enum - a_enum.reshape(
+        						a_enum.shape[0],-1,a_enum.shape[1]) == 0,0,1)
 
-        s_quant = df_quant_s.values.reshape(df_quant_s.shape[0],df_quant_s.shape[1])
-        a_quant = df_quant_a.values.reshape(df_quant_a.shape[0], -1, df_quant_a.shape[1])
+        s_quant = df_quant_s.values.reshape(df_quant_s.shape[0],
+        											df_quant_s.shape[1])
+        a_quant = df_quant_a.values.reshape(df_quant_a.shape[0], 
+        											-1, df_quant_a.shape[1])
         
         # Compute norms across artworks in collection.
         art_norms = np.linalg.norm(art_diff * (s_quant - a_quant), axis = 2)
@@ -228,7 +251,8 @@ def learn_optimal_assignment(cost_df, building_capacity, art_capacity, lam):
     for _ in range(1000):
 
         # Gradient descent.
-        term2b = np.matmul(ones_vector,np.matmul(np.transpose(ones_vector),P)-np.transpose(art_capacity))
+        term2b = np.matmul(ones_vector,np.matmul(np.transpose(ones_vector),P
+        										)-np.transpose(art_capacity))
         P = P - dt*C - lam *dt*(term2b)
 
         # Projection
@@ -300,10 +324,14 @@ def run_art_assignment(method, alpha, lam):
         
         logging.info("\n Learning optimal assignment...")
 
-        P = learn_optimal_assignment(cost_df, building_capacity, art_capacity, lam)
+        P = learn_optimal_assignment(cost_df, 
+        							building_capacity, 
+        							art_capacity, 
+        							lam)
         
         # Check that assignment numbers are sufficiently close to building capacity.
-        assert np.all(np.sum(P, axis = 1) - building_capacity.reshape(1,-1) < 1e-10)
+        assert np.all(np.sum(P, axis = 1) - building_capacity.reshape(
+        														1,-1) < 1e-10)
 
         # Convert the assignment array to a dataframe for readability.
         assignment_df = pd.DataFrame(P, index = cost_df.index,
