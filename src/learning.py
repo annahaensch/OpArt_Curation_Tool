@@ -57,10 +57,12 @@ def get_quantized_student_data(student_df,gender_map, race_map, region_map):
     """
     S = student_df.shape[0]
     
-    gender_quant = {g:student_df["gender_enum"].value_counts().to_dict().get(g,                             0)/S for g in gender_map.values()}
+    gender_quant = {g:student_df["gender_enum"].value_counts().to_dict().get(g,
+    										0)/S for g in gender_map.values()}
     race_quant = {g:student_df["race_enum"].value_counts().to_dict().get(g,
-                                    0)/S for g in race_map.values()}
-    region_quant = {g:student_df["region_enum"].value_counts().to_dict().get(g,                             0)/S for g in region_map.values()}
+                         					0)/S for g in race_map.values()}
+    region_quant = {g:student_df["region_enum"].value_counts().to_dict().get(g,                             
+    										0)/S for g in region_map.values()}
 
     return gender_quant, race_quant, region_quant
 
@@ -71,10 +73,12 @@ def get_quantized_art_data(art_df,gender_map, race_map, region_map):
     """
     A = art_df.shape[0]
 
-    gender_quant = {g:art_df["gender_enum"].value_counts().to_dict().get(g,0)/A                             for g in gender_map.values()}
+    gender_quant = {g:art_df["gender_enum"].value_counts().to_dict().get(g,0)/A 
+    										for g in gender_map.values()}
     race_quant = {g:art_df["race_enum"].value_counts().to_dict().get(g,0)/A 
-                                    for g in race_map.values()}
-    region_quant = {g:art_df["region_enum"].value_counts().to_dict().get(g,0)/A                             for g in region_map.values()}
+                                    		for g in race_map.values()}
+    region_quant = {g:art_df["region_enum"].value_counts().to_dict().get(g,0)/A 
+    										for g in region_map.values()}
 
     return gender_quant, race_quant, region_quant
 
