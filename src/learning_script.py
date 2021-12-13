@@ -108,7 +108,7 @@ def get_art_capacity_with_downsampling(art_df):
     Return dataframe with columns "tuple","original_index","capacity".
     """
     art_tuple_series = pd.Series([tuple(v) for v in art_df[[
-        "race_enum","gender_enum","region_enum"]].values], index = art_df.index)
+        "gender_enum","race_enum","region_enum"]].values], index = art_df.index)
     art_tuple_dict = art_tuple_series.value_counts().to_dict()
     
     # Sort values by tuple.
@@ -159,14 +159,12 @@ def compute_cost_matrix(art_df,
     assert set(hall_files) == set(hall_index)
 
     # Initialize empty dataframe
-    folder_files = [f for f in folder_files if f != '.ipynb_checkpoints']
-    cost_df = pd.DataFrame(index = [f.split("_students.csv")[0].lower() for f in folder_files],
+    cost_df = pd.DataFrame(index = hall_files,
                           columns = [int(i) for i in art_df.index])
 
-    
-    for i in range(len(folder_files)):
+    for i in range(len(hall_files)):
 
-        df = pd.read_csv("../data/filled_buildings/{}".format(folder_files[i]), index_col = 0)
+        df = pd.read_csv("../data/filled_buildings/{}_students.csv".format(hall_files[i]), index_col = 0)
         mode = np.array(df[["gender_enum","race_enum","region_enum"]].mode()).reshape(-1,3)
 
         diff = np.where((df[["gender_enum","race_enum","region_enum"]].values - mode) == 0,0,1)
@@ -205,9 +203,8 @@ def compute_cost_matrix(art_df,
         art_norms = np.linalg.norm(art_diff * (s_quant - a_quant), axis = 2)
 
         art_norms = (art_norms * building_norms).sum(axis = 1)
-        name = folder_files[i].split("_students.csv")[0].lower()
 
-        cost_df.loc[name,:] = list(art_norms/df.shape[0])
+        cost_df.loc[hall_files[i],:] = list(art_norms/df.shape[0])
 
     return cost_df
 
