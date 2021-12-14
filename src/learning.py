@@ -163,7 +163,7 @@ def compute_cost_matrix(art_df,
     # Initialize empty dataframe
     cost_df = pd.DataFrame(index = hall_files,
                           columns = [int(i) for i in art_df.index])
-
+    
     # Load mappings
     gender_map, race_map, region_map = get_mapping_dicts()
 
@@ -172,7 +172,6 @@ def compute_cost_matrix(art_df,
                                                         gender_map, 
                                                         race_map, 
                                                         region_map)
-
 
     for i in range(len(hall_files)):
 
@@ -265,7 +264,8 @@ def learn_optimal_assignment(cost_df, building_capacity, art_capacity, lam):
 
         # Gradient descent.
         term2b = np.matmul(ones_vector,np.matmul(np.transpose(ones_vector),P
-                                                )-np.transpose(art_capacity))
+                          )-np.transpose(art_capacity))
+
         P = P - dt*C - lam *dt*(term2b)
 
         # Projection
