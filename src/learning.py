@@ -58,11 +58,11 @@ def get_quantized_student_data(student_df,gender_map, race_map, region_map):
     S = student_df.shape[0]
     
     gender_quant = {g:student_df["gender_enum"].value_counts().to_dict().get(g,
-    										0)/S for g in gender_map.values()}
+                                            0)/S for g in gender_map.values()}
     race_quant = {g:student_df["race_enum"].value_counts().to_dict().get(g,
-                         					0)/S for g in race_map.values()}
+                                            0)/S for g in race_map.values()}
     region_quant = {g:student_df["region_enum"].value_counts().to_dict().get(g,                             
-    										0)/S for g in region_map.values()}
+                                            0)/S for g in region_map.values()}
 
     return gender_quant, race_quant, region_quant
 
@@ -74,11 +74,11 @@ def get_quantized_art_data(art_df,gender_map, race_map, region_map):
     A = art_df.shape[0]
 
     gender_quant = {g:art_df["gender_enum"].value_counts().to_dict().get(g,0)/A 
-    										for g in gender_map.values()}
+                                            for g in gender_map.values()}
     race_quant = {g:art_df["race_enum"].value_counts().to_dict().get(g,0)/A 
-                                    		for g in race_map.values()}
+                                            for g in race_map.values()}
     region_quant = {g:art_df["region_enum"].value_counts().to_dict().get(g,0)/A 
-    										for g in region_map.values()}
+                                            for g in region_map.values()}
 
     return gender_quant, race_quant, region_quant
 
@@ -88,8 +88,8 @@ def get_building_capacity_df():
     Return dataframe of art capacity by building.
     """
     art_df = pd.read_csv(
-    	"../data/2021_05_10_Artist_Subject_Donor_Data_Cleaned.csv", 
-    	index_col = 0)
+        "../data/2021_05_10_Artist_Subject_Donor_Data_Cleaned.csv", 
+        index_col = 0)
     art_df = art_df[~art_df["homeloc"].isna()]
     art_df = art_df[art_df["homeloc"] != "Crozier Fine Arts"]
 
@@ -128,11 +128,11 @@ def get_art_capacity_with_downsampling(art_df):
     # Add capacity from art_tuple_dict.
     for i in art_capacity_df.index:
         art_capacity_df.loc[i,"capacity"] = art_tuple_dict[
-        							art_capacity_df.loc[i,"tuples"]]    
+                                    art_capacity_df.loc[i,"tuples"]]    
 
     # Drop duplicate values.
     art_capacity_df.drop_duplicates(subset = ["tuples"], keep = "first", 
-    	inplace = True)
+        inplace = True)
     art_capacity_df.reset_index(drop = True, inplace = True)
 
     # Assert that all art pieces are being counted.
@@ -177,7 +177,7 @@ def compute_cost_matrix(art_df,
     for i in range(len(hall_files)):
 
         df = pd.read_csv("../data/filled_buildings/{}_students.csv".format(
-        	hall_files[i]), index_col = 0)
+            hall_files[i]), index_col = 0)
         df.reset_index(drop = True, inplace = True)
         
         # Get quant dicts
@@ -265,7 +265,7 @@ def learn_optimal_assignment(cost_df, building_capacity, art_capacity, lam):
 
         # Gradient descent.
         term2b = np.matmul(ones_vector,np.matmul(np.transpose(ones_vector),P
-        										)-np.transpose(art_capacity))
+                                                )-np.transpose(art_capacity))
         P = P - dt*C - lam *dt*(term2b)
 
         # Projection
@@ -338,13 +338,13 @@ def run_art_assignment(method, alpha, lam):
         logging.info("\n Learning optimal assignment...")
 
         P = learn_optimal_assignment(cost_df, 
-        							building_capacity, 
-        							art_capacity, 
-        							lam)
+                                    building_capacity, 
+                                    art_capacity, 
+                                    lam)
         
         # Check that assignment numbers are sufficiently close to building capacity.
         assert np.all(np.sum(P, axis = 1) - building_capacity.reshape(
-        														1,-1) < 1e-10)
+                                                                1,-1) < 1e-10)
 
         # Convert the assignment array to a dataframe for readability.
         assignment_df = pd.DataFrame(P, index = cost_df.index,
