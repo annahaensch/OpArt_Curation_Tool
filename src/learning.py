@@ -146,12 +146,6 @@ def get_art_capacity_with_downsampling(art_df):
 
 def compute_cost_matrix(art_df, 
                 hall_df, 
-                gender_quant_s, 
-                race_quant_s, 
-                region_quant_s, 
-                gender_quant_a, 
-                race_quant_a, 
-                region_quant_a, 
                 alpha):
 
     folder_files = os.listdir('../data/filled_buildings')
@@ -170,64 +164,83 @@ def compute_cost_matrix(art_df,
     cost_df = pd.DataFrame(index = hall_files,
                           columns = [int(i) for i in art_df.index])
 
+    # Load mappings
+    gender_map, race_map, region_map = get_mapping_dicts()
+
+    gender_quant_a, race_quant_a, region_quant_a = get_quantized_art_data(    
+                                                        art_df,
+                                                        gender_map, 
+                                                        race_map, 
+                                                        region_map)
+
+
     for i in range(len(hall_files)):
 
         df = pd.read_csv("../data/filled_buildings/{}_students.csv".format(
         	hall_files[i]), index_col = 0)
-        mode = np.array(df[["gender_enum","race_enum","region_enum"]].mode()
-        	).reshape(-1,3)
-
-        diff = np.where((df[["gender_enum","race_enum","region_enum"]
-        	].values - mode) == 0,0,1)
-
-        # Get df of quantized gender, race, region for students in building.
-        df_quant_s = pd.DataFrame()
-        df_quant_s["gender"] = [gender_quant_s.get(x,0) for x in df[
-        											"gender_enum"]]
-        df_quant_s["race"] = [race_quant_s.get(x,0) for x in df[
-        											"race_enum"]]
-        df_quant_s["region"] = [region_quant_s.get(x,0) for x in df[
-        											"region_enum"]]
-
-        df_quant_a = pd.DataFrame()
-        df_quant_a["gender"] = [gender_quant_a.get(x,0) for x in art_df[
-        											"gender_enum"]]
-        df_quant_a["race"] = [race_quant_a.get(x,0) for x in art_df[
-        											"race_enum"]]
-        df_quant_a["region"] = [region_quant_a.get(x,0) for x in art_df[
-        											"region_enum"]]
-
-        mode_quant = np.array([gender_quant_s.get(mode[0][0],0),
-                               race_quant_s.get(mode[0][0],0),
-                               region_quant_s.get(mode[0][0],0)]
-                               				).reshape(-1,df_quant_s.shape[1])
+        df.reset_index(drop = True, inplace = True)
         
-    
-        # Compute norms across student in buildings.
-        building_norms = np.linalg.norm(diff * (df_quant_s - mode_quant
-        										).values, axis = 1)
-        building_norms = np.exp(alpha * building_norms / building_norms.sum(
-        															axis = 0))
-        building_norms = building_norms.reshape(-1, building_norms.shape[0])
+        # Get quant dicts
+        gender_quant_s, race_quant_s, region_quant_s = get_quantized_student_data(    
+                                                            df,
+                                                            gender_map, 
+                                                            race_map, 
+                                                            region_map)
 
 
-        s_enum = df[["gender_enum","race_enum","region_enum"]].values
-        a_enum = art_df[["gender_enum","race_enum","region_enum"]].values
+        # Compute quantized student vectors.
+        stu = df[["gender_enum","race_enum","region_enum"]].values.copy()
+        q_stu = [[gender_quant_s.get(stu[i,0],0),
+                  race_quant_s.get(stu[i,1],0),
+                  region_quant_s.get(stu[i,2],0)] for i in df.index]
+        df_quant_s = pd.DataFrame(q_stu,
+                    columns = ["gender_quant","race_quant","region_quant"],
+                    index = df.index)
 
-        art_diff = np.where(s_enum - a_enum.reshape(
-        						a_enum.shape[0],-1,a_enum.shape[1]) == 0,0,1)
+        # Compute quantized building mode.
+        mode = df.mode()[["gender_enum","race_enum","region_enum"]].values.copy()
+        q_mode = [[gender_quant_s.get(mode[0,0],0),
+                race_quant_s.get(mode[0,1],0),
+                region_quant_s.get(mode[0,2],0)]]
+        df_quant_mode = pd.DataFrame(q_mode,
+                    columns = ["gender_quant","race_quant","region_quant"],
+                    index = [0])
 
-        s_quant = df_quant_s.values.reshape(df_quant_s.shape[0],
-        											df_quant_s.shape[1])
-        a_quant = df_quant_a.values.reshape(df_quant_a.shape[0], 
-        											-1, df_quant_a.shape[1])
-        
-        # Compute norms across artworks in collection.
-        art_norms = np.linalg.norm(art_diff * (s_quant - a_quant), axis = 2)
+        # Compute quantized art vectors.
+        art = art_df[["gender_enum","race_enum","region_enum"]].values.copy()
+        q_art = [[gender_quant_a.get(art[i,0],0),
+                  race_quant_a.get(art[i,1],0),
+                  region_quant_a.get(art[i,2],0)] for i in art_df.index]
+        df_quant_a = pd.DataFrame(q_art,
+                    columns = ["gender_quant","race_quant","region_quant"],
+                    index = art_df.index)
 
-        art_norms = (art_norms * building_norms).sum(axis = 1)
+        # Reshape dataframes to compute diff. 
+        a = df_quant_a.values.reshape(-1,df_quant_a.shape[0],df_quant_a.shape[1])
+        s = df_quant_s.values.reshape(df_quant_s.shape[0],-1,df_quant_s.shape[1])
 
-        cost_df.loc[hall_files[i],:] = list(art_norms/df.shape[0])
+        # Compute student building diff and student art diff.
+        stu_build_diff = pd.DataFrame(
+            np.linalg.norm(df_quant_s.values - df_quant_mode.values, axis = 1), 
+                        index = df_quant_s.index)
+        stu_art_diff = pd.DataFrame(
+                        np.linalg.norm(a - s, axis = 2), 
+                        index = df_quant_s.index, 
+                        columns = df_quant_a.index)
+
+        # Compute probability.
+        prob = np.exp(alpha * stu_build_diff.values/stu_art_diff.values
+            ) / np.sum(np.exp(alpha * stu_build_diff.values/stu_art_diff.values
+                ), axis = 0)
+
+        assert np.sum(prob) - prob.shape[1] < 1e-08
+
+        # Now we take cost to be the odds.
+        prob = pd.DataFrame(prob / (1 - prob), index = df_quant_s.index, 
+            columns = df_quant_a.index)
+
+        # Sum cost over all students in building.
+        cost_df.loc[hall_files[i],:] = list(np.sum(prob, axis = 0).values)
 
     return cost_df
 
