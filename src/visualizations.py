@@ -9,6 +9,24 @@ import sys
 sys.path.append('..')
 
 import src as sc
+import geopandas
+import contextily as ctx  
+import json
+
+from os import listdir
+from os.path import isfile, join
+import math
+
+COLOR_MAP = {"light_orange":"#E69F00",
+             "light_blue":"#56B4E9",
+             "teal":"#009E73",
+             "yellow":"#F0E442",
+             "dark_blue":"#0072B2",
+             "dark_orange":"#D55E00",
+             "pink":"#CC79A7",
+             "purple":"#9370DB",
+             "black":"#000000",
+             "silver":"#DCDCDC"}
 
 def assignment_heatmat(assignment_df):
     """ Returns heatmap of art/building assignment probabilities.
@@ -60,3 +78,240 @@ def assignment_heatmat(assignment_df):
     ax.set_yticklabels(y_labels)
 
     plt.show()
+
+
+def beeswarm_gender(demo_df, demo_cat, title = "Total Count by Race and Gender"):
+    """ Returns beeswarm plot of counts by race and gender. 
+
+    Input:
+        demo_df: (dataframe) student_df or art_df
+        demo_cat: (string) "race" or "region" 
+
+    Returns: 
+        Beeswarm style horizontal bar chart of total counts.
+    """
+    hall_df, student_df, art_df = sc.load_data()
+    y_labels = list(student_df[demo_cat].value_counts().to_dict().keys())
+
+    men = []
+    women = []
+    count_df = pd.DataFrame(0, index = y_labels, columns = ["Men","Women"])
+    for r in demo_df[demo_cat].unique():
+        df = demo_df[demo_df[demo_cat] == r]
+        gender_dict = df["gender"].value_counts().to_dict()    
+        
+        count_df.loc[r,"Men"] = gender_dict.get("Man",0)
+        count_df.loc[r,"Women"] = gender_dict.get("Woman",0)
+
+    fig, ax = plt.subplots(figsize = (10,5))
+    ind = np.arange(count_df.shape[0])
+    width = 0.35
+
+    for i in range(len(y_labels)):
+        r = y_labels[i]
+        
+        if count_df.loc[r,"Women"] > 0:
+            x_women = np.arange(count_df.loc[r,"Women"])
+            y_women = np.full(len(x_women), ind[i]) + np.random.normal(0,.05,len(x_women))
+            s_women = np.full(len(x_women),3)
+            ax.scatter(x_women,y_women - width/2, s=s_women, color = COLOR_MAP["purple"])
+
+        if count_df.loc[r,"Men"] > 0:
+            x_men = np.arange(count_df.loc[r,"Men"])
+            y_men = np.full(len(x_men), ind[i]) + np.random.normal(0,.05,len(x_men))
+            s_men = np.full(len(x_men),3)
+            ax.scatter(x_men,y_men + width/2, s=s_men, color = COLOR_MAP["teal"])
+        
+        
+        
+    ax.scatter([],[], color = COLOR_MAP["teal"], s = [8], label = "Man")
+    ax.scatter([],[], color = COLOR_MAP["purple"], s = [8], label = "Woman")
+        
+    ax.set_xlabel("Count")
+    ax.set_title(title)
+
+    ax.set_yticks(ind)
+    ax.set_yticklabels(count_df.index)
+    plt.legend()
+    plt.show()
+    
+
+def campus_building_map():
+    """ Returns labeled campus map.
+    """
+    names = sc.hall_url_name_dict
+    
+    # Opening JSON file
+    f = open('../data/hall_dict.json')
+    hall_dict = json.load(f)
+
+    # Load campus building detials.
+    loc_df = pd.DataFrame(index = list(hall_dict.keys()), 
+        columns = ["name","hall_type","longitude","latitude"])
+    for k,v in hall_dict.items():
+        loc_df.loc[k,"name"] = names[k]
+        loc_df.loc[k,"hall_type"] = v["hall_type"]
+        loc_df.loc[k,"longitude"] = v["longitude"]
+        loc_df.loc[k,"latitude"] = v["latitude"]
+            
+    color_map = {"Academic Building":COLOR_MAP["light_blue"],
+             "Residence Halls":COLOR_MAP["light_orange"],
+             "Other":COLOR_MAP["pink"], 
+             "Unknown":COLOR_MAP["teal"]}
+
+
+    medford_df = loc_df[loc_df["latitude"] >= 42.4]
+
+    fig, ax = plt.subplots(figsize = (10,10))
+
+    # Create geopandas dataframe
+    geo_df = geopandas.GeoDataFrame(medford_df, geometry=geopandas.points_from_xy(medford_df.longitude, medford_df.latitude))
+
+    # Add spherical coordinate reference system (crs) to lat/long pairs.
+    geo_df.crs = "EPSG:4326" 
+
+    # Project onto a flat crs for mapping.
+    geo_df = geo_df.to_crs(epsg=3857) 
+
+    # Add color codings 
+    c = [color_map[h] for h in geo_df["hall_type"]]
+
+    # Plot listings as points.
+    geo_df.plot(ax = ax, marker = "o", markersize = 50, c = c)
+
+    # Add basemap behind geopandas plot.
+    ctx.add_basemap(ax, zoom = 17, alpha = 0.4)
+
+    # Annotate buildings of type "Other".
+    x = geo_df[geo_df['name'] == "Goddard Chapel"].geometry.x
+    y = geo_df[geo_df['name'] == "Goddard Chapel"].geometry.y
+
+    ax.annotate("Goddard Chapel", xy=(x, y), xytext=(-40, 7), textcoords="offset points")
+
+    x = geo_df[geo_df['name'] == "Gifford House"].geometry.x
+    y = geo_df[geo_df['name'] == "Gifford House"].geometry.y
+
+    ax.annotate("Gifford House", xy=(x, y), xytext=(-40, 7), textcoords="offset points")
+
+    for k,v in color_map.items():
+        plt.scatter([],[],color = v, label = k)
+
+    # Turn off axes
+    ax.set_axis_off()
+    ax.legend()
+    plt.show()
+
+    boston_df = loc_df[loc_df["latitude"] < 42.4]
+
+    fig, ax = plt.subplots(figsize = (10,10))
+
+    # Create geopandas dataframe
+    geo_df = geopandas.GeoDataFrame(boston_df, geometry=geopandas.points_from_xy(boston_df.longitude, boston_df.latitude))
+
+    # Add spherical coordinate reference system (crs) to lat/long pairs.
+    geo_df.crs = "EPSG:4326" 
+
+    # Project onto a flat crs for mapping.
+    geo_df = geo_df.to_crs(epsg=3857) 
+
+    # Add color codings 
+    c = [color_map[h] for h in geo_df["hall_type"]]
+
+    # Plot listings as points.
+    geo_df.plot(ax = ax, marker = "o", markersize = 50, c = c)
+
+    # Add Buffer
+    pts = geopandas.GeoSeries(geo_df["geometry"])
+    circles = pts.buffer(100)
+    circles.plot(ax = ax, marker = "o", markersize = 50, alpha = 0)
+
+    x = geo_df[geo_df['name'] == 'School at the Museum of Fine Arts'].geometry.x
+    y = geo_df[geo_df['name'] == 'School at the Museum of Fine Arts'].geometry.y
+
+    ax.annotate("SMFA", xy=(x, y), xytext=(-13, 7), textcoords="offset points")
+
+    # Add basemap behind geopandas plot.
+    ctx.add_basemap(ax, zoom = 17, alpha = 0.4)
+
+    # Turn off axes
+    ax.set_axis_off()
+    plt.show()
+
+    from os import listdir
+from os.path import isfile, join
+import math
+demo_cat = "race"
+
+def beeswarm_building_gender(demo_cat, title):
+    """ Returns beeswarm plot of counts by race and gender. 
+
+    Input:
+        demo_cat: (string) "race" or "region" 
+
+    Returns: 
+        Beeswarm style horizontal bar chart of total counts.
+    """
+    my_path = "../data/filled_buildings/"
+    names = sc.hall_short_name_dict
+    files = [f for f in listdir(my_path) if isfile(join(my_path, f))]
+
+    n = int(math.ceil(len(files) **(1/2)))
+
+    fig, ax = plt.subplots(n,n, figsize = (14,18), sharex = True, sharey = True)
+
+    for i in range(len(files)):
+        name = names[files[i].split("_students.csv")[0]]
+                     
+        ax[i//n, i%n].scatter([1],[1])
+        student_df = pd.read_csv(my_path + files[i])
+        y_labels = list(student_df[demo_cat].value_counts().to_dict().keys())
+
+        men = []
+        women = []
+        count_df = pd.DataFrame(0, index = y_labels, columns = ["Men","Women"])
+        for r in student_df[demo_cat].unique():
+            df = student_df[student_df[demo_cat] == r]
+            gender_dict = df["gender"].value_counts().to_dict()    
+            
+            count_df.loc[r,"Men"] = gender_dict.get("Man",0)
+            count_df.loc[r,"Women"] = gender_dict.get("Woman",0)
+
+        ind = np.arange(count_df.shape[0])
+        width = 0.35
+
+        for y in range(len(y_labels)):
+            r = y_labels[y]
+            
+            if count_df.loc[r,"Women"] > 0:
+                x_women = np.arange(count_df.loc[r,"Women"])
+                y_women = np.full(len(x_women), ind[y]) + np.random.normal(0,.05,len(x_women))
+                s_women = np.full(len(x_women),3)
+                ax[i//n, i%n].scatter(x_women,y_women - width/2, s=s_women, color = COLOR_MAP["purple"])
+
+            if count_df.loc[r,"Men"] > 0:
+                x_men = np.arange(count_df.loc[r,"Men"])
+                y_men = np.full(len(x_men), ind[y]) + np.random.normal(0,.05,len(x_men))
+                s_men = np.full(len(x_men),3)
+                ax[i//n, i%n].scatter(x_men,y_men + width/2, s=s_men, color = COLOR_MAP["teal"])
+            
+        ax[i//n, i%n].set_title(name)
+
+        ax[i//n, i%n].set_yticks(ind)
+        ax[i//n, i%n].set_yticklabels(count_df.index)
+        
+        ax[i//n, i%n].spines['right'].set_visible(False)
+        ax[i//n, i%n].spines['top'].set_visible(False)
+        
+        
+    ax[4,1].scatter([],[], color = COLOR_MAP["teal"], s = [12], label = "Man")
+    ax[4,1].scatter([],[], color = COLOR_MAP["purple"], s = [12], label = "Woman")
+    handles, labels = ax[4,1].get_legend_handles_labels()
+    fig.legend(handles, labels, loc='lower right', bbox_to_anchor=[.6, .2])
+
+    ax[4,2].axis("off")
+    ax[4,3].axis("off")
+    ax[4,4].axis("off")
+
+    plt.suptitle(title, y  = .93, fontsize = 18)
+    plt.show()
+    
