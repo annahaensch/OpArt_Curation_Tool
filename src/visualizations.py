@@ -78,62 +78,6 @@ def assignment_heatmat(assignment_df):
     ax.set_yticklabels(y_labels)
 
     plt.show()
-
-
-def beeswarm_gender(demo_df, demo_cat, title = "Total Count by Race and Gender"):
-    """ Returns beeswarm plot of counts by race and gender. 
-
-    Input:
-        demo_df: (dataframe) student_df or art_df
-        demo_cat: (string) "race" or "region" 
-
-    Returns: 
-        Beeswarm style horizontal bar chart of total counts.
-    """
-    hall_df, student_df, art_df = sc.load_data()
-    y_labels = list(student_df[demo_cat].value_counts().to_dict().keys())
-
-    men = []
-    women = []
-    count_df = pd.DataFrame(0, index = y_labels, columns = ["Men","Women"])
-    for r in demo_df[demo_cat].unique():
-        df = demo_df[demo_df[demo_cat] == r]
-        gender_dict = df["gender"].value_counts().to_dict()    
-        
-        count_df.loc[r,"Men"] = gender_dict.get("Man",0)
-        count_df.loc[r,"Women"] = gender_dict.get("Woman",0)
-
-    fig, ax = plt.subplots(figsize = (10,5))
-    ind = np.arange(count_df.shape[0])
-    width = 0.35
-
-    for i in range(len(y_labels)):
-        r = y_labels[i]
-        
-        if count_df.loc[r,"Women"] > 0:
-            x_women = np.arange(count_df.loc[r,"Women"])
-            y_women = np.full(len(x_women), ind[i]) + np.random.normal(0,.05,len(x_women))
-            s_women = np.full(len(x_women),3)
-            ax.scatter(x_women,y_women - width/2, s=s_women, color = COLOR_MAP["purple"])
-
-        if count_df.loc[r,"Men"] > 0:
-            x_men = np.arange(count_df.loc[r,"Men"])
-            y_men = np.full(len(x_men), ind[i]) + np.random.normal(0,.05,len(x_men))
-            s_men = np.full(len(x_men),3)
-            ax.scatter(x_men,y_men + width/2, s=s_men, color = COLOR_MAP["teal"])
-        
-        
-        
-    ax.scatter([],[], color = COLOR_MAP["teal"], s = [8], label = "Man")
-    ax.scatter([],[], color = COLOR_MAP["purple"], s = [8], label = "Woman")
-        
-    ax.set_xlabel("Count")
-    ax.set_title(title)
-
-    ax.set_yticks(ind)
-    ax.set_yticklabels(count_df.index)
-    plt.legend()
-    plt.show()
     
 
 def campus_building_map():
@@ -237,81 +181,148 @@ def campus_building_map():
     ax.set_axis_off()
     plt.show()
 
-    from os import listdir
-from os.path import isfile, join
-import math
-demo_cat = "race"
 
-def beeswarm_building_gender(demo_cat, title):
+def beeswarm_building_gender(demo_cat, title, building_list = list(sc.hall_short_name_dict.keys())):
     """ Returns beeswarm plot of counts by race and gender. 
 
     Input:
         demo_cat: (string) "race" or "region" 
+        title: (string)
+        building_list: (list) string building names.
 
     Returns: 
         Beeswarm style horizontal bar chart of total counts.
     """
     my_path = "../data/filled_buildings/"
-    names = sc.hall_short_name_dict
-    files = [f for f in listdir(my_path) if isfile(join(my_path, f))]
+    hall_df, student_df, art_df = sc.load_data()
 
-    n = int(math.ceil(len(files) **(1/2)))
+    color_dict = {"Woman":COLOR_MAP["purple"],
+                  "Man":COLOR_MAP["teal"],
+                  "Transgender or Non-Binary":COLOR_MAP["yellow"]}
 
-    fig, ax = plt.subplots(n,n, figsize = (14,18), sharex = True, sharey = True)
+    n = int(math.ceil(len(building_list) **(1/2)))
+    m = math.ceil(len(building_list) / n)
 
-    for i in range(len(files)):
-        name = names[files[i].split("_students.csv")[0]]
-                     
-        ax[i//n, i%n].scatter([1],[1])
-        student_df = pd.read_csv(my_path + files[i])
-        y_labels = list(student_df[demo_cat].value_counts().to_dict().keys())
+    fig, ax = plt.subplots(n,m, figsize = (14,18), sharex = True, sharey = True)
 
-        men = []
-        women = []
-        count_df = pd.DataFrame(0, index = y_labels, columns = ["Men","Women"])
-        for r in student_df[demo_cat].unique():
-            df = student_df[student_df[demo_cat] == r]
-            gender_dict = df["gender"].value_counts().to_dict()    
-            
-            count_df.loc[r,"Men"] = gender_dict.get("Man",0)
-            count_df.loc[r,"Women"] = gender_dict.get("Woman",0)
+    y_labels = list(student_df[demo_cat].value_counts().keys())
 
-        ind = np.arange(count_df.shape[0])
-        width = 0.35
+    for i in range(len(building_list)):
 
-        for y in range(len(y_labels)):
-            r = y_labels[y]
-            
-            if count_df.loc[r,"Women"] > 0:
-                x_women = np.arange(count_df.loc[r,"Women"])
-                y_women = np.full(len(x_women), ind[y]) + np.random.normal(0,.05,len(x_women))
-                s_women = np.full(len(x_women),3)
-                ax[i//n, i%n].scatter(x_women,y_women - width/2, s=s_women, color = COLOR_MAP["purple"])
+        if m == 1:
+            axs = ax[i]
+        else:
+            axs = ax[i//n, i%m]
 
-            if count_df.loc[r,"Men"] > 0:
-                x_men = np.arange(count_df.loc[r,"Men"])
-                y_men = np.full(len(x_men), ind[y]) + np.random.normal(0,.05,len(x_men))
-                s_men = np.full(len(x_men),3)
-                ax[i//n, i%n].scatter(x_men,y_men + width/2, s=s_men, color = COLOR_MAP["teal"])
-            
-        ax[i//n, i%n].set_title(name)
-
-        ax[i//n, i%n].set_yticks(ind)
-        ax[i//n, i%n].set_yticklabels(count_df.index)
+        my_file = join(my_path, building_list[i]+"_students.csv")
+        name = sc.hall_short_name_dict[building_list[i]]
         
-        ax[i//n, i%n].spines['right'].set_visible(False)
-        ax[i//n, i%n].spines['top'].set_visible(False)
-        
-        
-    ax[4,1].scatter([],[], color = COLOR_MAP["teal"], s = [12], label = "Man")
-    ax[4,1].scatter([],[], color = COLOR_MAP["purple"], s = [12], label = "Woman")
-    handles, labels = ax[4,1].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='lower right', bbox_to_anchor=[.6, .2])
+        df = pd.read_csv(my_file)
+        grouped_df = df.groupby(demo_cat)
 
-    ax[4,2].axis("off")
-    ax[4,3].axis("off")
-    ax[4,4].axis("off")
+        count_df = pd.DataFrame(0, index = y_labels, 
+            columns = ["Transgender or Non-Binary","Woman","Man"])
+        
+        for y in df[demo_cat].unique():
+            gender_dict = grouped_df.get_group(y)["gender"].value_counts().to_dict()
+
+            for k,v in gender_dict.items():
+                count_df.loc[y,k] = v
+
+        for idx in count_df.index:
+            
+            for col in count_df.columns:
+
+                offset = (list(count_df.columns).index(col) - 1) * .25
+
+                x_values = np.arange(count_df.loc[idx,col])
+                y_values = np.full(len(x_values),float(y_labels.index(idx)) + offset)
+                y_values = y_values + np.random.normal(0,.05,len(y_values)) # add gaussian jitter.
+
+                s_values = np.full(len(x_values),3) # set marker size.
+
+                axs.scatter(x_values, y_values, s = s_values, color = color_dict[col])
+
+            
+        axs.set_title(name)
+
+        axs.set_yticks(range(count_df.shape[0]))
+        axs.set_yticklabels(count_df.index)
+        
+        axs.spines['right'].set_visible(False)
+        axs.spines['top'].set_visible(False)
+        
+    for j in range(i+1,n ** 2):
+        if m > 1:
+            ax[j//n,j%m].axis("off")    
+
+    # add legend
+    if m == 1:
+        axs = ax[0]
+    else:
+        axs = ax[0,0]
+    axs.scatter([],[], color = COLOR_MAP["teal"], s = [12], label = "Man")
+    axs.scatter([],[], color = COLOR_MAP["purple"], s = [12], label = "Woman")
+    axs.scatter([],[], color = COLOR_MAP["yellow"], s = [12], label = "Transgender or Non-Binary")
+    handles, labels = axs.get_legend_handles_labels()
+    fig.legend(handles, labels, loc='upper right', bbox_to_anchor=[1,1])
 
     plt.suptitle(title, y  = .93, fontsize = 18)
     plt.show()
+
+
+def beeswarm_gender(demo_df, demo_cat, title = "Total Count by Race and Gender"):
+    """ Returns beeswarm plot of counts by race and gender. 
+
+    Input:
+        demo_df: (dataframe) student_df or art_df
+        demo_cat: (string) "race" or "region" 
+
+    Returns: 
+        Beeswarm style horizontal bar chart of total counts.
+    """
+    hall_df, student_df, art_df = sc.load_data()
+    y_labels = list(student_df[demo_cat].value_counts().to_dict().keys())
+
+    color_dict = {"Woman":COLOR_MAP["purple"],
+                  "Man":COLOR_MAP["teal"],
+                  "Transgender or Non-Binary":COLOR_MAP["yellow"]}
+
+    grouped_df = demo_df.groupby(demo_cat)
+    count_df = pd.DataFrame(0, index = y_labels, 
+        columns = ["Transgender or Non-Binary","Woman","Man"])
     
+    for y in demo_df[demo_cat].unique():
+        gender_dict = grouped_df.get_group(y)["gender"].value_counts().to_dict()
+
+        for k,v in gender_dict.items():
+            count_df.loc[y,k] = v
+
+    fig, ax = plt.subplots(figsize = (10,5))
+    for idx in count_df.index:        
+        for col in ["Transgender or Non-Binary","Woman","Man"]:
+            offset = (list(count_df.columns).index(col) - 2) * .25
+
+            x_values = np.arange(count_df.loc[idx,col])
+            y_values = np.full(len(x_values),float(y_labels.index(idx)) + offset)
+            y_values = y_values + np.random.normal(0,.05,len(y_values)) # add gaussian jitter.
+
+            s_values = np.full(len(x_values),3) # set marker size.
+
+            ax.scatter(x_values, y_values, s = s_values, color = color_dict[col])
+
+
+        
+    ax.scatter([],[], color = COLOR_MAP["teal"], s = [8], label = "Man")
+    ax.scatter([],[], color = COLOR_MAP["purple"], s = [8], label = "Woman")
+    ax.scatter([],[], color = COLOR_MAP["yellow"], s = [8], label = "Transgender or Non-Binary")
+
+    ax.set_xlabel("Count")
+    ax.set_title(title)
+
+    ax.set_yticks(range(count_df.shape[0]))
+    ax.set_yticklabels(count_df.index)
+
+    plt.ylim(-0.5,7.5)
+    plt.legend()
+    plt.show()
