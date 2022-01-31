@@ -150,9 +150,8 @@ def compute_cost_matrix(art_df,
 
     folder_files = os.listdir('../data/filled_buildings')
     hall_files = [f.split("_students.csv")[0].lower() for f in folder_files]
-    hall_files = [f for f in hall_files if f != '.ipynb_checkpoints']
+    hall_files = [f for f in hall_files if f in list(hall_df.index)]
     hall_files.sort()
-
 
     hall_index = list(hall_df.index)
     hall_index.sort()
