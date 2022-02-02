@@ -198,7 +198,7 @@ def beeswarm_building_gender(demo_cat, title, building_list = list(sc.hall_short
 
     color_dict = {"Woman":COLOR_MAP["purple"],
                   "Man":COLOR_MAP["teal"],
-                  "Transgender or Non-Binary":COLOR_MAP["yellow"]}
+                  "Transgender":COLOR_MAP["yellow"]}
 
     n = int(math.ceil(len(building_list) **(1/2)))
     m = math.ceil(len(building_list) / n)
@@ -215,13 +215,13 @@ def beeswarm_building_gender(demo_cat, title, building_list = list(sc.hall_short
             axs = ax[i//n, i%m]
 
         my_file = join(my_path, building_list[i]+"_students.csv")
-        name = sc.hall_short_name_dict[building_list[i]]
+        name = sc.hall_short_name_dict.get(building_list[i],building_list[i])
         
         df = pd.read_csv(my_file)
         grouped_df = df.groupby(demo_cat)
 
         count_df = pd.DataFrame(0, index = y_labels, 
-            columns = ["Transgender or Non-Binary","Woman","Man"])
+            columns = ["Transgender","Woman","Man"])
         
         for y in df[demo_cat].unique():
             gender_dict = grouped_df.get_group(y)["gender"].value_counts().to_dict()
@@ -286,11 +286,11 @@ def beeswarm_gender(demo_df, demo_cat, title = "Total Count by Race and Gender")
 
     color_dict = {"Woman":COLOR_MAP["purple"],
                   "Man":COLOR_MAP["teal"],
-                  "Transgender or Non-Binary":COLOR_MAP["yellow"]}
+                  "Transgender":COLOR_MAP["yellow"]}
 
     grouped_df = demo_df.groupby(demo_cat)
     count_df = pd.DataFrame(0, index = y_labels, 
-        columns = ["Transgender or Non-Binary","Woman","Man"])
+        columns = ["Transgender","Woman","Man"])
     
     for y in demo_df[demo_cat].unique():
         gender_dict = grouped_df.get_group(y)["gender"].value_counts().to_dict()
@@ -300,7 +300,7 @@ def beeswarm_gender(demo_df, demo_cat, title = "Total Count by Race and Gender")
 
     fig, ax = plt.subplots(figsize = (10,5))
     for idx in count_df.index:        
-        for col in ["Transgender or Non-Binary","Woman","Man"]:
+        for col in ["Transgender","Woman","Man"]:
             offset = (list(count_df.columns).index(col) - 2) * .25
 
             x_values = np.arange(count_df.loc[idx,col])

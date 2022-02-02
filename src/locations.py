@@ -82,6 +82,31 @@ hall_url_name_dict = {
                 'univ_advancement':'80 George Street'
                }
 
+hall_short_name_dict = {
+                'aidekman':'Aidekman Arts Center',
+                'anderson':'SEC-Anderson',
+                'ballou':'Ballou Hall',
+                'capen_house':'Capen House',
+                'clic':'CLIC',
+                'dental_school':'Dental School',
+                'eaton_hall':'Eaton Hall',
+                'fine_arts_house':'Fine Arts House',
+                'gifford_house':'Gifford House',
+                'goddard_chapel':'Goddard Chapel',
+                'goddard_hall':'Goddard Hall',
+                'granoff_fam_hillel_center':'Granoff Hillel Center',
+                'granoff_music_bld':'Granoff Music Center',
+                'houston_hall':'Houston Hall',
+                'jean_mayer_hnra_center':'Jean Mayer HNRC',
+                'lane_hall':'Lane Hall',
+                'miner_hall':'Miner Hall',
+                'packard_hall':'Packard Hall',
+                'smfa':'SMFA',
+                'sophia_gordon_hall':'Sophia Gordon Hall',
+                'tisch_library':'Tisch Library',
+                'univ_advancement':'80 George Street'
+               }
+
 hall_school_dict = {
                 'aidekman':['School of Arts & Sciences', 'Public Use'],
                 'anderson':['School of Arts & Sciences', 'School of Engineering'],
