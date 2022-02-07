@@ -131,24 +131,28 @@ def get_art_capacity_with_downsampling(art_df, categories = ["gender","race","re
         
     art_tuple_series = pd.Series([tuple(v) for v in df[cat_enum].values], 
                             index = df.index)
+
+    art_string_series = pd.Series([", ".join(v) for v in df[categories].values], 
+                            index = df.index)
     
     art_tuple_dict = art_tuple_series.value_counts().to_dict()
-
-    # Sort values by tuple.
-    art_tuple_series.sort_values(inplace = True)
     
     # Initialize empty dataframe
     art_capacity_df = pd.DataFrame()
-    art_capacity_df["tuples"] = art_tuple_series.values
+    art_capacity_df["tuple"] = art_tuple_series.values
+    art_capacity_df["string"] = art_string_series.values
     art_capacity_df["original_index"] = list(art_tuple_series.index)
+
+    art_capacity_df.sort_values(by = "tuple", ascending = True, inplace = True)
+    art_capacity_df.reset_index(drop = True, inplace = True)
     
     # Add capacity from art_tuple_dict.
     for i in art_capacity_df.index:
         art_capacity_df.loc[i,"capacity"] = art_tuple_dict[
-                                    art_capacity_df.loc[i,"tuples"]]    
+                                    art_capacity_df.loc[i,"tuple"]]    
 
     # Drop duplicate values.
-    art_capacity_df.drop_duplicates(subset = ["tuples"], keep = "first", 
+    art_capacity_df.drop_duplicates(subset = ["tuple"], keep = "first", 
         inplace = True)
     art_capacity_df.reset_index(drop = True, inplace = True)
 
@@ -162,93 +166,117 @@ def get_art_capacity_with_downsampling(art_df, categories = ["gender","race","re
 
 
 def compute_cost_matrix(art_df, 
-                hall_df, 
-                alpha):
+                hall_df,
+                categories = ["gender","race","region"],
+                alpha = -1):
+    """
+    Return dataframe with columns "tuple","original_index","capacity".
 
-    folder_files = os.listdir('../data/filled_buildings')
-    hall_files = [f.split("_students.csv")[0].lower() for f in folder_files]
-    hall_files = [f for f in hall_files if f in list(hall_df.index)]
+    Input:
+        art_df: (dataframe) art works with attributes
+        hall_df: (dataframe) one-hot dataframe with halls as index, schools as columns
+        categories: (list of strings) list containing "gender",
+            "race" or "region".
+        alpha: (float) model parameter determining weight of 
+            difference.
+        
+    Returns:
+        Datraframe where the entry in row m and column n is the 
+        cost to hang artwork m in building n.
+    """    
+    my_path = "../data/filled_buildings/"
+    hall_files = ["{}_students.csv".format(f) for f in hall_df.index]
     hall_files.sort()
-
-    hall_index = list(hall_df.index)
-    hall_index.sort()
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
-    assert set(hall_files) == set(hall_index)
+                  
+    folder_files = set(os.listdir(my_path))
+    assert set(hall_files).issubset(folder_files)
 
     # Initialize empty dataframe
-    cost_df = pd.DataFrame(index = hall_files,
+    cost_df = pd.DataFrame(index = hall_df.index,
                           columns = [int(i) for i in art_df.index])
     
     # Load mappings
-    gender_map, race_map, region_map = get_mapping_dicts()
+    mappings = get_mapping_dicts()
+    mapping_dict = {"gender":mappings[0],
+                   "race":mappings[1],
+                   "region":mappings[2]}
 
-    gender_quant_a, race_quant_a, region_quant_a = get_quantized_art_data(    
-                                                        art_df,
-                                                        gender_map, 
-                                                        race_map, 
-                                                        region_map)
-
+    # Get quantized artwork dictionaries 
+    quant_a = get_quantized_art_data(art_df,
+                        gender_map = mapping_dict["gender"], 
+                        race_map = mapping_dict["race"], 
+                        region_map = mapping_dict["region"])
+    quant_a_dict = {"gender":quant_a[0],
+                   "race":quant_a[1],
+                   "region":quant_a[2]}
+    
+    cat_enum = ["{}_enum".format(c) for c in categories]
+    cat_quant = ["{}_quant".format(c) for c in categories]
     for i in range(len(hall_files)):
-
-        df = pd.read_csv("../data/filled_buildings/{}_students.csv".format(
+        name = hall_files[i].split("_students.csv")[0]
+        df = pd.read_csv("../data/filled_buildings/{}".format(
             hall_files[i]), index_col = 0)
         df.reset_index(drop = True, inplace = True)
         
-        # Get quant dicts
-        gender_quant_s, race_quant_s, region_quant_s = get_quantized_student_data(    
-                                                            df,
-                                                            gender_map, 
-                                                            race_map, 
-                                                            region_map)
+        # Initialize empty dataframes
+        df_quant_s = pd.DataFrame(index = df.index, 
+                    columns = cat_quant)
+        df_quant_a = pd.DataFrame(index = art_df.index, 
+                    columns = cat_quant)
+        df_quant_mode = pd.DataFrame(index = [0],
+                    columns = cat_quant)
+        
+        # Get quantized student dictionaries
+        quant_s = get_quantized_student_data(df,
+                        gender_map = mapping_dict["gender"], 
+                        race_map = mapping_dict["race"], 
+                        region_map = mapping_dict["region"])
 
+        quant_s_dict = {"gender":quant_s[0],
+                       "race":quant_s[1],
+                       "region":quant_s[2]}
 
-        # Compute quantized student vectors.
-        stu = df[["gender_enum","race_enum","region_enum"]].values.copy()
-        q_stu = [[gender_quant_s.get(stu[i,0],0),
-                  race_quant_s.get(stu[i,1],0),
-                  region_quant_s.get(stu[i,2],0)] for i in df.index]
-        df_quant_s = pd.DataFrame(q_stu,
-                    columns = ["gender_quant","race_quant","region_quant"],
-                    index = df.index)
+        
+        for c in categories:
+            # Compute quantized student vectors.
+            df_quant_s["{}_quant".format(c)
+                      ] = df["{}_enum".format(c)].map(quant_s_dict[c])
+            
+            # Compute quantized building mode.
+            m = df["{}_enum".format(c)].mode()[0]
+            quant_m = quant_s_dict[c][m]
+            df_quant_mode.loc[0,"{}_quant".format(c)] = quant_m
 
-        # Compute quantized building mode.
-        mode = df.mode()[["gender_enum","race_enum","region_enum"]].values.copy()
-        q_mode = [[gender_quant_s.get(mode[0,0],0),
-                race_quant_s.get(mode[0,1],0),
-                region_quant_s.get(mode[0,2],0)]]
-        df_quant_mode = pd.DataFrame(q_mode,
-                    columns = ["gender_quant","race_quant","region_quant"],
-                    index = [0])
-
-        # Compute quantized art vectors.
-        art = art_df[["gender_enum","race_enum","region_enum"]].values.copy()
-        q_art = [[gender_quant_a.get(art[i,0],0),
-                  race_quant_a.get(art[i,1],0),
-                  region_quant_a.get(art[i,2],0)] for i in art_df.index]
-        df_quant_a = pd.DataFrame(q_art,
-                    columns = ["gender_quant","race_quant","region_quant"],
-                    index = art_df.index)
-
+            # Compute quantized art vectors.
+            df_quant_a["{}_quant".format(c)
+                      ] = art_df["{}_enum".format(c)].map(quant_a_dict[c])
+        
         # Reshape dataframes to compute diff. 
         a = df_quant_a.values.reshape(-1,df_quant_a.shape[0],df_quant_a.shape[1])
         s = df_quant_s.values.reshape(df_quant_s.shape[0],-1,df_quant_s.shape[1])
 
-        # Compute student building diff and student art diff.
-        stu_build_diff = pd.DataFrame(
-            np.linalg.norm(df_quant_s.values - df_quant_mode.values, axis = 1), 
-                        index = df_quant_s.index)
-        stu_art_diff = pd.DataFrame(
-                        np.linalg.norm(a - s, axis = 2), 
-                        index = df_quant_s.index, 
-                        columns = df_quant_a.index)
-
+        # Compute student building diff.
+        diff = df_quant_s.values - df_quant_mode.values
+        diff = diff.astype(float)
+        stu_build_diff = pd.DataFrame(np.linalg.norm(diff, axis = 1),
+                                columns = [0],
+                            index = df_quant_s.index)
+        
+        # Compute student art diff.
+        s = df_quant_s.values.reshape(df_quant_s.shape[0],-1,df_quant_s.shape[1])
+        a = df_quant_a.values.reshape(-1,df_quant_a.shape[0],df_quant_a.shape[1])
+        diff = (s-a).astype(float)
+        stu_art_diff = pd.DataFrame(np.linalg.norm(diff, axis = 2),
+                            columns = df_quant_a.index,
+                            index = df_quant_s.index)
+            
         art_prob = np.sum(alpha * stu_build_diff.values / stu_art_diff.values, axis = 0)
-
+        
         art_prob = np.exp(art_prob - logsumexp(art_prob))
 
         assert np.abs(np.sum(art_prob) - 1) < 1e-08
        
-        cost_df.loc[hall_files[i],:] = list(art_prob / np.sum(art_prob))
+        cost_df.loc[name,:] = list(art_prob)
 
     return cost_df
 
