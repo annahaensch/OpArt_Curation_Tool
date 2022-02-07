@@ -65,17 +65,8 @@ def assignment_heatmat(assignment_df):
              rotation_mode="anchor")
 
     # Get ytick strings
-    gender_map, race_map, region_map = sc.get_mapping_dicts()
-    g_map = {str(v):k for k,v in gender_map.items()}
-    r_map = {str(v):k for k,v in race_map.items()}
-    e_map = {str(v):k for k,v in region_map.items()}
-
-    y_labels = ["{},{},{}".format(g_map[str(c[0])],r_map[str(c[1])],e_map[
-        str(c[2])]) for c in assignment_df.columns]
-
-
     ax.set_yticks(.5 + np.arange(assignment_df.shape[1]))
-    ax.set_yticklabels(y_labels)
+    ax.set_yticklabels(assignment_df.columns)
 
     plt.show()
     
