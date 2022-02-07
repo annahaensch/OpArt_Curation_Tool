@@ -8,6 +8,7 @@ import json
 import itertools
 import numpy.ma as ma
 
+from scipy.special import logsumexp
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -109,14 +110,30 @@ def get_building_capacity_df():
     return building_df
 
 
-def get_art_capacity_with_downsampling(art_df):
+def get_art_capacity_with_downsampling(art_df, categories = ["gender","race","region"]):
     """
     Return dataframe with columns "tuple","original_index","capacity".
+
+    Input:
+        art_df: (dataframe) art works with attributes
+        categories: (list of strings) list containing "gender","race" or "region".
+
+    Returns:
+        Datraframe with downsampled category tuples, original artwork indices,
+        and artwork type capacity (i.e. how many works of the given type exist in
+        the collection).
     """
-    art_tuple_series = pd.Series([tuple(v) for v in art_df[[
-        "gender_enum","race_enum","region_enum"]].values], index = art_df.index)
-    art_tuple_dict = art_tuple_series.value_counts().to_dict()
+    cat_enum = ["{}_enum".format(c) for c in categories]
     
+    df = art_df.copy()
+    for c in cat_enum:
+        df = df[df[c] != 0]
+        
+    art_tuple_series = pd.Series([tuple(v) for v in df[cat_enum].values], 
+                            index = df.index)
+    
+    art_tuple_dict = art_tuple_series.value_counts().to_dict()
+
     # Sort values by tuple.
     art_tuple_series.sort_values(inplace = True)
     
@@ -136,7 +153,7 @@ def get_art_capacity_with_downsampling(art_df):
     art_capacity_df.reset_index(drop = True, inplace = True)
 
     # Assert that all art pieces are being counted.
-    assert art_capacity_df.loc[:,"capacity"].sum() == art_df.shape[0]
+    assert art_capacity_df.loc[:,"capacity"].sum() == df.shape[0]
 
     # Clip capacity at 100 to prevent overuse.
     art_capacity_df["capacity"] = art_capacity_df["capacity"].clip(upper = 100)
@@ -225,19 +242,13 @@ def compute_cost_matrix(art_df,
                         index = df_quant_s.index, 
                         columns = df_quant_a.index)
 
-        # Compute probability.
-        prob = np.exp(alpha * stu_build_diff.values/stu_art_diff.values
-            ) / np.sum(np.exp(alpha * stu_build_diff.values/stu_art_diff.values
-                ), axis = 0)
+        art_prob = np.sum(alpha * stu_build_diff.values / stu_art_diff.values, axis = 0)
 
-        assert np.sum(prob) - prob.shape[1] < 1e-08
+        art_prob = np.exp(art_prob - logsumexp(art_prob))
 
-        # Now we take cost to be the odds.
-        prob = pd.DataFrame(prob / (1 - prob), index = df_quant_s.index, 
-            columns = df_quant_a.index)
-
-        # Sum cost over all students in building.
-        cost_df.loc[hall_files[i],:] = list(np.sum(prob, axis = 0).values)
+        assert np.abs(np.sum(art_prob) - 1) < 1e-08
+       
+        cost_df.loc[hall_files[i],:] = list(art_prob / np.sum(art_prob))
 
     return cost_df
 
