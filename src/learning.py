@@ -169,7 +169,8 @@ def get_art_capacity_with_downsampling(art_df, categories = ["gender","race","re
 def compute_cost_matrix(art_df, 
                 hall_df,
                 categories = ["gender","race","region"],
-                alpha = -1):
+                alpha = -1,
+                beta = 100):
     """
     Return dataframe with columns "tuple","original_index","capacity".
 
@@ -178,8 +179,8 @@ def compute_cost_matrix(art_df,
         hall_df: (dataframe) one-hot dataframe with halls as index, schools as columns
         categories: (list of strings) list containing "gender",
             "race" or "region".
-        alpha: (float) model parameter determining weight of 
-            difference.
+        alpha: (float) model parameter determining outlier importance.
+        beta: (float) model parameter determining art rep. importance.
         
     Returns:
         Datraframe where the entry in row m and column n is the 
@@ -266,29 +267,33 @@ def compute_cost_matrix(art_df,
 
 
         # Compute student building diff.
+        stu_build_delta = np.where(df[cat_enum].values - df[cat_enum].mode().values == 0,0,1)
         diff = df_quant_s.values - df_quant_mode.values
         diff = diff.astype(float)
-        stu_build_diff = pd.DataFrame(np.linalg.norm(diff, axis = 1),
+        stu_build_diff = pd.DataFrame(np.linalg.norm(diff * stu_build_delta, axis = 1),
                                 columns = [0],
                             index = df_quant_s.index)
         
         # Compute student art diff.
         s_enum = df[cat_enum].values.reshape(df.shape[0],-1,len(categories))
         a_enum = new_art_df[cat_enum].values.reshape(-1,new_art_df.shape[0],len(categories))
+
         stu_art_delta = np.where((s_enum - a_enum) == 0, 0, 1).astype(float)
-        
+
         s_quant = df_quant_s.values.reshape(df_quant_s.shape[0],-1,df_quant_s.shape[1])
         a_quant = df_quant_a.values.reshape(-1,df_quant_a.shape[0],df_quant_a.shape[1])
         stu_art_quant = (s_quant-a_quant).astype(float)
         
         values = np.linalg.norm(stu_art_quant * stu_art_delta, axis = 2)
+
         values = np.where(values == 0, 1e-08, values)
+        art_norm = beta * np.prod(df_quant_a.values, axis = 1)
+        values = values * art_norm.reshape(-1,df_quant_a.shape[0])
         stu_art_diff = pd.DataFrame(values,
                             columns = df_quant_a.index,
                             index = df_quant_s.index)
-        
+
         art_prob = np.sum(alpha * stu_build_diff.values / stu_art_diff.values, axis = 0)
-        
         art_prob = np.exp(art_prob - logsumexp(art_prob))
 
         assert np.abs(np.sum(art_prob) - 1) < 1e-08
