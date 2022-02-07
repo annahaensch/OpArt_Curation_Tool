@@ -44,9 +44,10 @@ def load_data():
     student_df = pd.read_csv("../data/student_df.csv", 
                                 index_col = 0)
     
-    # Gather artwork data
+    # Gather artwork data.
     art_df = pd.read_csv("../data/2021_10_04_art_data_cleaned.csv", 
         index_col = 0)
+
 
     return hall_df, student_df, art_df
 
@@ -184,16 +185,22 @@ def compute_cost_matrix(art_df,
         Datraframe where the entry in row m and column n is the 
         cost to hang artwork m in building n.
     """    
+    cat_enum = ["{}_enum".format(c) for c in categories]
+    cat_quant = ["{}_quant".format(c) for c in categories]
+
+    # Drop rows from art_df where category value is unreported.
+    new_art_df = art_df.copy()
+    for c in cat_enum:
+        new_art_df = new_art_df[new_art_df[c] != 0]
+    new_art_df.reset_index(drop = True, inplace = True)
+    
+    # Check that the filled building data is available.
     my_path = "../data/filled_buildings/"
     hall_files = ["{}_students.csv".format(f) for f in hall_df.index]
     hall_files.sort()
                   
     folder_files = set(os.listdir(my_path))
     assert set(hall_files).issubset(folder_files)
-
-    # Initialize empty dataframe
-    cost_df = pd.DataFrame(index = hall_df.index,
-                          columns = [int(i) for i in art_df.index])
     
     # Load mappings
     mappings = get_mapping_dicts()
@@ -201,27 +208,37 @@ def compute_cost_matrix(art_df,
                    "race":mappings[1],
                    "region":mappings[2]}
 
-    # Get quantized artwork dictionaries 
-    quant_a = get_quantized_art_data(art_df,
+    # Get quantized artwork dictionaries and reduced dataframe.
+    quant_a = get_quantized_art_data(new_art_df,
                         gender_map = mapping_dict["gender"], 
                         race_map = mapping_dict["race"], 
                         region_map = mapping_dict["region"])
+
     quant_a_dict = {"gender":quant_a[0],
                    "race":quant_a[1],
                    "region":quant_a[2]}
+
+    for c in categories:
+        new_art_df["{}_quant".format(c)] = new_art_df["{}_enum".format(c)].map(quant_a_dict[c])
+        
+    new_art_df["tuple"] = [tuple(v) for v in new_art_df[cat_enum].values]
+    new_art_df.sort_values(by = "tuple", inplace = True)
+    new_art_df = new_art_df.drop_duplicates(subset = ["tuple"])
+    new_art_df.set_index("tuple", drop = True, inplace = True)
+    df_quant_a = new_art_df[cat_quant]
     
-    cat_enum = ["{}_enum".format(c) for c in categories]
-    cat_quant = ["{}_quant".format(c) for c in categories]
+    # Initialize empty dataframe
+    cost_df = pd.DataFrame(index = hall_df.index,
+                          columns = list(new_art_df.index))
+
     for i in range(len(hall_files)):
         name = hall_files[i].split("_students.csv")[0]
         df = pd.read_csv("../data/filled_buildings/{}".format(
             hall_files[i]), index_col = 0)
         df.reset_index(drop = True, inplace = True)
-        
+
         # Initialize empty dataframes
         df_quant_s = pd.DataFrame(index = df.index, 
-                    columns = cat_quant)
-        df_quant_a = pd.DataFrame(index = art_df.index, 
                     columns = cat_quant)
         df_quant_mode = pd.DataFrame(index = [0],
                     columns = cat_quant)
@@ -247,13 +264,6 @@ def compute_cost_matrix(art_df,
             quant_m = quant_s_dict[c][m]
             df_quant_mode.loc[0,"{}_quant".format(c)] = quant_m
 
-            # Compute quantized art vectors.
-            df_quant_a["{}_quant".format(c)
-                      ] = art_df["{}_enum".format(c)].map(quant_a_dict[c])
-        
-        # Reshape dataframes to compute diff. 
-        a = df_quant_a.values.reshape(-1,df_quant_a.shape[0],df_quant_a.shape[1])
-        s = df_quant_s.values.reshape(df_quant_s.shape[0],-1,df_quant_s.shape[1])
 
         # Compute student building diff.
         diff = df_quant_s.values - df_quant_mode.values
@@ -263,13 +273,20 @@ def compute_cost_matrix(art_df,
                             index = df_quant_s.index)
         
         # Compute student art diff.
-        s = df_quant_s.values.reshape(df_quant_s.shape[0],-1,df_quant_s.shape[1])
-        a = df_quant_a.values.reshape(-1,df_quant_a.shape[0],df_quant_a.shape[1])
-        diff = (s-a).astype(float)
-        stu_art_diff = pd.DataFrame(np.linalg.norm(diff, axis = 2),
+        s_enum = df[cat_enum].values.reshape(df.shape[0],-1,len(categories))
+        a_enum = new_art_df[cat_enum].values.reshape(-1,new_art_df.shape[0],len(categories))
+        stu_art_delta = np.where((s_enum - a_enum) == 0, 0, 1).astype(float)
+        
+        s_quant = df_quant_s.values.reshape(df_quant_s.shape[0],-1,df_quant_s.shape[1])
+        a_quant = df_quant_a.values.reshape(-1,df_quant_a.shape[0],df_quant_a.shape[1])
+        stu_art_quant = (s_quant-a_quant).astype(float)
+        
+        values = np.linalg.norm(stu_art_quant * stu_art_delta, axis = 2)
+        values = np.where(values == 0, 1e-08, values)
+        stu_art_diff = pd.DataFrame(values,
                             columns = df_quant_a.index,
                             index = df_quant_s.index)
-            
+        
         art_prob = np.sum(alpha * stu_build_diff.values / stu_art_diff.values, axis = 0)
         
         art_prob = np.exp(art_prob - logsumexp(art_prob))
