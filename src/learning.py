@@ -266,39 +266,47 @@ def compute_cost_matrix(art_df,
             df_quant_mode.loc[0,"{}_quant".format(c)] = quant_m
 
 
-        # Compute student building diff.
+        # One-hot array with dimension #students x #categories where entry
+        # [i,k] = 1 if student i shares attribute k with the building mode.
         stu_build_delta = np.where(df[cat_enum].values - df[cat_enum].mode().values == 0,0,1)
-        diff = df_quant_s.values - df_quant_mode.values
-        diff = diff.astype(float)
-        stu_build_diff = pd.DataFrame(np.linalg.norm(diff * stu_build_delta, axis = 1),
-                                columns = [0],
-                            index = df_quant_s.index)
         
-        # Compute student art diff.
-        s_enum = df[cat_enum].values.reshape(df.shape[0],-1,len(categories))
-        a_enum = new_art_df[cat_enum].values.reshape(-1,new_art_df.shape[0],len(categories))
+        # Array of differences between student quantile and mode quantile.
+        diff = (df_quant_s.values - df_quant_mode.values).astype(float)
 
-        stu_art_delta = np.where((s_enum - a_enum) == 0, 0, 1).astype(float)
+        # Array with dimension #students x 1 x 1
+        stu_build_norm = np.linalg.norm(diff * stu_build_delta, axis = 1)
+        stu_build_norm = stu_build_norm.reshape(stu_build_norm.shape[0],1,-1)
 
-        s_quant = df_quant_s.values.reshape(df_quant_s.shape[0],-1,df_quant_s.shape[1])
-        a_quant = df_quant_a.values.reshape(-1,df_quant_a.shape[0],df_quant_a.shape[1])
-        stu_art_quant = (s_quant-a_quant).astype(float)
+        # Array with dimension #students x 1 x 1
+        numerator = alpha * stu_build_norm
         
-        values = np.linalg.norm(stu_art_quant * stu_art_delta, axis = 2)
+        # Compute denominator
+        student_enum = df[cat_enum].values.reshape(df.shape[0],-1,len(categories))
+        art_enum = new_art_df[cat_enum].values.reshape(-1,new_art_df.shape[0],len(categories))
 
-        values = np.where(values == 0, 1e-08, values)
-        art_norm = beta * np.prod(df_quant_a.values, axis = 1)
-        values = values * art_norm.reshape(-1,df_quant_a.shape[0])
-        stu_art_diff = pd.DataFrame(values,
-                            columns = df_quant_a.index,
-                            index = df_quant_s.index)
+        # One-hot array with dimenion #students x #artworks x #categories
+        # where entry [i,j,k] = 1 if student i and artwork j share attribute k.
+        stu_art_delta = np.where((student_enum - art_enum) == 0, 0, 1).astype(float)
 
-        art_prob = np.sum(alpha * stu_build_diff.values / stu_art_diff.values, axis = 0)
+        # Array with dimension #students x #artworks
+        stu_art_norm = np.linalg.norm(stu_art_delta.astype(float), axis = 2)
+        stu_art_norm = np.where(stu_art_norm == 0, 1e-08,stu_art_norm)
+
+        # Array with dimension 1 X #artworks where entry [0,m] is the 
+        # probability of an artwork sharing all attributes with artwork m.
+        art_likelihood = np.prod(df_quant_a, axis = 1).values.reshape(-1, new_art_df.shape[0])
+        
+        # Array with dimension #students x 1 x #artworks
+        denominator = beta * stu_art_norm * art_likelihood
+        denominator = denominator.reshape(denominator.shape[0],-1,denominator.shape[1])
+
+
+        art_prob = np.sum((numerator / denominator), axis = 0)
         art_prob = np.exp(art_prob - logsumexp(art_prob))
 
         assert np.abs(np.sum(art_prob) - 1) < 1e-08
        
-        cost_df.loc[name,:] = list(art_prob)
+        cost_df.loc[name,:] = art_prob
 
     return cost_df
 
