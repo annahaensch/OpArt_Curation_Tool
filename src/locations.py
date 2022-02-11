@@ -419,10 +419,10 @@ def fill_academic_building(building, student_df, hall_df):
     other_students = student_df[~student_df['school'].isin(depts)]
     extra_users = 0
     if "General Administration" in depts:
-        extra_users += int(total_enrollment * (.1))
+        extra_users += int(total_enrollment * (.01))
         
     if "Public Use" in depts:
-        extra_users += int(total_enrollment * (.2))
+        extra_users += int(total_enrollment * (.02))
 
     idx = np.random.choice(other_students.index, extra_users, replace = False)
     df = pd.concat([df,other_students.loc[idx,["race","gender","region","race_enum","gender_enum","region_enum"]]])
