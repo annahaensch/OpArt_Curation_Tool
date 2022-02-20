@@ -355,6 +355,81 @@ def learn_optimal_assignment(cost_df, building_capacity, art_capacity, lam):
 
     return P
 
+def validate_assignment(assignment_df):
+    """ Print validation dataframe
+
+    Input: 
+        assignment_df: (dataframe) output from `learn_optimal_assignment`
+
+    Output: 
+        Dataframe indexed by race and gender with probability of seeing 
+        identity on campus in optimized approach and baseline approach.
+    """
+
+    # Load validation data.
+    hall_df, student_df, art_df = load_data()
+
+    race_index = [r+","+r for r in list(student_df["race"].value_counts().keys()
+                                        ) if r!= "Unreported"]
+    race_index = ",".join(race_index).split(",")
+
+    gender_index = [list(student_df["gender"].value_counts().keys()
+                                        )for r in range(int(len(race_index)/2))]
+    gender_index = [",".join(g) for g in gender_index]
+    gender_index = ",".join(gender_index).split(",")
+
+    val_df = pd.DataFrame(np.zeros((len(race_index),3)), index = [
+        race_index, gender_index], columns = ["Optimized","Baseline","Total"])
+
+    # Get current art locations and process dataframe.
+    art_loc_df = pd.read_csv("../data/2021_05_07_Artist_Subject_Donor_Data_v3.csv"
+                                            )[["OBJECTID","HOMELOC"]]
+    art_df_with_loc = art_df.merge(art_loc_df, 
+                                    left_on = "objectid",
+                                    right_on = "OBJECTID")
+    art_df_with_loc = art_df_with_loc[art_df_with_loc["HOMELOC"
+                                        ] != "Crozier Fine Arts"]
+    art_df_with_loc["loc"] = [n.split("Medford, ")[-1].split(
+        "Boston, ")[-1].strip(" ").lower().replace(".","").replace(
+                        " ","_") for n in art_df_with_loc["HOMELOC"]]
+    art_df_with_loc["loc"] = art_df_with_loc["loc"].replace(
+                                    "eaton_hal","eaton_hall")
+    
+    # Iterative over buildings in question.
+    for h in assignment_df.index:
+        building_df = pd.read_csv("../data/filled_buildings/{}_students.csv".format(h))
+        
+        art_slice_df = art_df_with_loc[art_df_with_loc["loc"] == h]
+        
+        for c in val_df.index:
+            race = c[0]
+            gender = c[1]
+            
+            # Optimized probability of art in building with attribute race, gender
+            A = assignment_df.loc[[h],:]
+            P = A/np.sum(A.values)
+            try:
+                O_PP = P["{}, {}".format(gender, race)].iloc[0]
+            except: 
+                O_PP = 0
+            N = building_df[(building_df["race"] == race)&(
+                        building_df["gender"] == gender)].shape[0]
+            val_df.loc[(race, gender),"Optimized"] += O_PP * N
+            
+            
+            # Baseline probability of art in building with attribute c
+            B_PP = art_slice_df[(art_slice_df["race"] == race)&(
+                            art_slice_df["gender"] == gender)].shape[0]/art_slice_df.shape[0]
+            val_df.loc[(race, gender),"Baseline"] += B_PP * N
+            
+            # Total number of students with attribute c
+            val_df.loc[(race, gender),"Total"] += N
+    
+    val_df = pd.DataFrame(val_df.values/val_df["Total"].values.reshape(
+                -1,1), index = val_df.index, columns = val_df.columns)
+    
+    return val_df[["Optimized","Baseline"]]
+
 
 def run_art_assignment(method, alpha, lam):
     
