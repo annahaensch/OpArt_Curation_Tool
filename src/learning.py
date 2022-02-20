@@ -8,6 +8,7 @@ import json
 import itertools
 import numpy.ma as ma
 
+from scipy.special import logsumexp
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -43,9 +44,10 @@ def load_data():
     student_df = pd.read_csv("../data/student_df.csv", 
                                 index_col = 0)
     
-    # Gather artwork data
+    # Gather artwork data.
     art_df = pd.read_csv("../data/2021_10_04_art_data_cleaned.csv", 
         index_col = 0)
+
 
     return hall_df, student_df, art_df
 
@@ -109,34 +111,54 @@ def get_building_capacity_df():
     return building_df
 
 
-def get_art_capacity_with_downsampling(art_df):
+def get_art_capacity_with_downsampling(art_df, categories = ["gender","race","region"]):
     """
     Return dataframe with columns "tuple","original_index","capacity".
+
+    Input:
+        art_df: (dataframe) art works with attributes
+        categories: (list of strings) list containing "gender","race" or "region".
+
+    Returns:
+        Datraframe with downsampled category tuples, original artwork indices,
+        and artwork type capacity (i.e. how many works of the given type exist in
+        the collection).
     """
-    art_tuple_series = pd.Series([tuple(v) for v in art_df[[
-        "gender_enum","race_enum","region_enum"]].values], index = art_df.index)
-    art_tuple_dict = art_tuple_series.value_counts().to_dict()
+    cat_enum = ["{}_enum".format(c) for c in categories]
     
-    # Sort values by tuple.
-    art_tuple_series.sort_values(inplace = True)
+    df = art_df.copy()
+    for c in cat_enum:
+        df = df[df[c] != 0]
+        
+    art_tuple_series = pd.Series([tuple(v) for v in df[cat_enum].values], 
+                            index = df.index)
+
+    art_string_series = pd.Series([", ".join(v) for v in df[categories].values], 
+                            index = df.index)
+    
+    art_tuple_dict = art_tuple_series.value_counts().to_dict()
     
     # Initialize empty dataframe
     art_capacity_df = pd.DataFrame()
-    art_capacity_df["tuples"] = art_tuple_series.values
+    art_capacity_df["tuple"] = art_tuple_series.values
+    art_capacity_df["string"] = art_string_series.values
     art_capacity_df["original_index"] = list(art_tuple_series.index)
+
+    art_capacity_df.sort_values(by = "tuple", ascending = True, inplace = True)
+    art_capacity_df.reset_index(drop = True, inplace = True)
     
     # Add capacity from art_tuple_dict.
     for i in art_capacity_df.index:
         art_capacity_df.loc[i,"capacity"] = art_tuple_dict[
-                                    art_capacity_df.loc[i,"tuples"]]    
+                                    art_capacity_df.loc[i,"tuple"]]    
 
     # Drop duplicate values.
-    art_capacity_df.drop_duplicates(subset = ["tuples"], keep = "first", 
+    art_capacity_df.drop_duplicates(subset = ["tuple"], keep = "first", 
         inplace = True)
     art_capacity_df.reset_index(drop = True, inplace = True)
 
     # Assert that all art pieces are being counted.
-    assert art_capacity_df.loc[:,"capacity"].sum() == art_df.shape[0]
+    assert art_capacity_df.loc[:,"capacity"].sum() == df.shape[0]
 
     # Clip capacity at 100 to prevent overuse.
     art_capacity_df["capacity"] = art_capacity_df["capacity"].clip(upper = 100)
@@ -145,109 +167,158 @@ def get_art_capacity_with_downsampling(art_df):
 
 
 def compute_cost_matrix(art_df, 
-                hall_df, 
-                alpha):
+                hall_df,
+                categories = ["gender","race","region"],
+                alpha = -1,
+                beta = 100):
+    """
+    Return dataframe with columns "tuple","original_index","capacity".
 
-    folder_files = os.listdir('../data/filled_buildings')
-    hall_files = [f.split("_students.csv")[0].lower() for f in folder_files]
-    hall_files = [f for f in hall_files if f in list(hall_df.index)]
+    Input:
+        art_df: (dataframe) art works with attributes
+        hall_df: (dataframe) one-hot dataframe with halls as index, schools as columns
+        categories: (list of strings) list containing "gender",
+            "race" or "region".
+        alpha: (float) model parameter determining outlier importance.
+        beta: (float) model parameter determining art rep. importance.
+        
+    Returns:
+        Datraframe where the entry in row m and column n is the 
+        cost to hang artwork m in building n.
+    """    
+    cat_enum = ["{}_enum".format(c) for c in categories]
+    cat_quant = ["{}_quant".format(c) for c in categories]
+
+    # Drop rows from art_df where category value is unreported.
+    new_art_df = art_df.copy()
+    for c in cat_enum:
+        new_art_df = new_art_df[new_art_df[c] != 0]
+    new_art_df.reset_index(drop = True, inplace = True)
+    
+    # Check that the filled building data is available.
+    my_path = "../data/filled_buildings/"
+    hall_files = ["{}_students.csv".format(f) for f in hall_df.index]
     hall_files.sort()
-
-    hall_index = list(hall_df.index)
-    hall_index.sort()
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
-    assert set(hall_files) == set(hall_index)
-
-    # Initialize empty dataframe
-    cost_df = pd.DataFrame(index = hall_files,
-                          columns = [int(i) for i in art_df.index])
+                  
+    folder_files = set(os.listdir(my_path))
+    assert set(hall_files).issubset(folder_files)
     
     # Load mappings
-    gender_map, race_map, region_map = get_mapping_dicts()
+    mappings = get_mapping_dicts()
+    mapping_dict = {"gender":mappings[0],
+                   "race":mappings[1],
+                   "region":mappings[2]}
 
-    gender_quant_a, race_quant_a, region_quant_a = get_quantized_art_data(    
-                                                        art_df,
-                                                        gender_map, 
-                                                        race_map, 
-                                                        region_map)
+    # Get quantized artwork dictionaries and reduced dataframe.
+    quant_a = get_quantized_art_data(new_art_df,
+                        gender_map = mapping_dict["gender"], 
+                        race_map = mapping_dict["race"], 
+                        region_map = mapping_dict["region"])
+
+    quant_a_dict = {"gender":quant_a[0],
+                   "race":quant_a[1],
+                   "region":quant_a[2]}
+
+    for c in categories:
+        new_art_df["{}_quant".format(c)] = new_art_df["{}_enum".format(c)].map(quant_a_dict[c])
+        
+    new_art_df["tuple"] = [tuple(v) for v in new_art_df[cat_enum].values]
+    new_art_df.sort_values(by = "tuple", inplace = True)
+    new_art_df = new_art_df.drop_duplicates(subset = ["tuple"])
+    new_art_df.set_index("tuple", drop = True, inplace = True)
+    df_quant_a = new_art_df[cat_quant]
+    
+    # Initialize empty dataframe
+    cost_df = pd.DataFrame(index = hall_df.index,
+                          columns = list(new_art_df.index))
 
     for i in range(len(hall_files)):
-
-        df = pd.read_csv("../data/filled_buildings/{}_students.csv".format(
+        name = hall_files[i].split("_students.csv")[0]
+        df = pd.read_csv("../data/filled_buildings/{}".format(
             hall_files[i]), index_col = 0)
         df.reset_index(drop = True, inplace = True)
+
+        # Initialize empty dataframes
+        df_quant_s = pd.DataFrame(index = df.index, 
+                    columns = cat_quant)
+        df_quant_mode = pd.DataFrame(index = [0],
+                    columns = cat_quant)
         
-        # Get quant dicts
-        gender_quant_s, race_quant_s, region_quant_s = get_quantized_student_data(    
-                                                            df,
-                                                            gender_map, 
-                                                            race_map, 
-                                                            region_map)
+        # Get quantized student dictionaries
+        quant_s = get_quantized_student_data(df,
+                        gender_map = mapping_dict["gender"], 
+                        race_map = mapping_dict["race"], 
+                        region_map = mapping_dict["region"])
+
+        quant_s_dict = {"gender":quant_s[0],
+                       "race":quant_s[1],
+                       "region":quant_s[2]}
+
+        
+        for c in categories:
+            # Compute quantized student vectors.
+            df_quant_s["{}_quant".format(c)
+                      ] = df["{}_enum".format(c)].map(quant_s_dict[c])
+            
+            # Compute quantized building mode.
+            m = df["{}_enum".format(c)].mode()[0]
+            quant_m = quant_s_dict[c][m]
+            df_quant_mode.loc[0,"{}_quant".format(c)] = quant_m
 
 
-        # Compute quantized student vectors.
-        stu = df[["gender_enum","race_enum","region_enum"]].values.copy()
-        q_stu = [[gender_quant_s.get(stu[i,0],0),
-                  race_quant_s.get(stu[i,1],0),
-                  region_quant_s.get(stu[i,2],0)] for i in df.index]
-        df_quant_s = pd.DataFrame(q_stu,
-                    columns = ["gender_quant","race_quant","region_quant"],
-                    index = df.index)
+        # One-hot array with dimension #students x #categories where entry
+        # [i,k] = 1 if student i shares attribute k with the building mode.
+        stu_build_delta = np.where(df[cat_enum].values - df[cat_enum].mode().values == 0,0,1)
+        
+        # Array of differences between student quantile and mode quantile.
+        diff = (df_quant_s.values - df_quant_mode.values).astype(float)
 
-        # Compute quantized building mode.
-        mode = df.mode()[["gender_enum","race_enum","region_enum"]].values.copy()
-        q_mode = [[gender_quant_s.get(mode[0,0],0),
-                race_quant_s.get(mode[0,1],0),
-                region_quant_s.get(mode[0,2],0)]]
-        df_quant_mode = pd.DataFrame(q_mode,
-                    columns = ["gender_quant","race_quant","region_quant"],
-                    index = [0])
+        # Array with dimension #students x 1 x 1
+        stu_build_norm = np.linalg.norm(diff * stu_build_delta, axis = 1)
+        stu_build_norm = stu_build_norm.reshape(stu_build_norm.shape[0],1,-1)
 
-        # Compute quantized art vectors.
-        art = art_df[["gender_enum","race_enum","region_enum"]].values.copy()
-        q_art = [[gender_quant_a.get(art[i,0],0),
-                  race_quant_a.get(art[i,1],0),
-                  region_quant_a.get(art[i,2],0)] for i in art_df.index]
-        df_quant_a = pd.DataFrame(q_art,
-                    columns = ["gender_quant","race_quant","region_quant"],
-                    index = art_df.index)
+        # Array with dimension #students x 1 x 1
+        numerator = alpha * stu_build_norm
+        
+        # Compute denominator
+        student_enum = df[cat_enum].values.reshape(df.shape[0],-1,len(categories))
+        art_enum = new_art_df[cat_enum].values.reshape(-1,new_art_df.shape[0],len(categories))
 
-        # Reshape dataframes to compute diff. 
-        a = df_quant_a.values.reshape(-1,df_quant_a.shape[0],df_quant_a.shape[1])
-        s = df_quant_s.values.reshape(df_quant_s.shape[0],-1,df_quant_s.shape[1])
+        # One-hot array with dimenion #students x #artworks x #categories
+        # where entry [i,j,k] = 1 if student i and artwork j share attribute k.
+        stu_art_delta = np.where((student_enum - art_enum) == 0, 0, 1).astype(float)
 
-        # Compute student building diff and student art diff.
-        stu_build_diff = pd.DataFrame(
-            np.linalg.norm(df_quant_s.values - df_quant_mode.values, axis = 1), 
-                        index = df_quant_s.index)
-        stu_art_diff = pd.DataFrame(
-                        np.linalg.norm(a - s, axis = 2), 
-                        index = df_quant_s.index, 
-                        columns = df_quant_a.index)
+        # Array with dimension #students x #artworks
+        stu_art_norm = np.linalg.norm(stu_art_delta.astype(float), axis = 2)
+        stu_art_norm = np.where(stu_art_norm == 0, 1e-08,stu_art_norm)
 
-        # Compute probability.
-        prob = np.exp(alpha * stu_build_diff.values/stu_art_diff.values
-            ) / np.sum(np.exp(alpha * stu_build_diff.values/stu_art_diff.values
-                ), axis = 0)
+        # Array with dimension 1 X #artworks where entry [0,m] is the 
+        # probability of an artwork sharing all attributes with artwork m.
+        art_likelihood = np.prod(df_quant_a, axis = 1).values.reshape(-1, new_art_df.shape[0])
+        
+        # Array with dimension #students x 1 x #artworks
+        denominator = beta * stu_art_norm * art_likelihood
+        denominator = denominator.reshape(denominator.shape[0],-1,denominator.shape[1])
 
-        assert np.sum(prob) - prob.shape[1] < 1e-08
 
-        # Now we take cost to be the odds.
-        prob = pd.DataFrame(prob / (1 - prob), index = df_quant_s.index, 
-            columns = df_quant_a.index)
+        art_prob = np.sum((numerator / denominator), axis = 0)
+        art_prob = np.exp(art_prob - logsumexp(art_prob))
 
-        # Sum cost over all students in building.
-        cost_df.loc[hall_files[i],:] = list(np.sum(prob, axis = 0).values)
+        assert np.abs(np.sum(art_prob) - 1) < 1e-08
+       
+        cost_df.loc[name,:] = art_prob
 
     return cost_df
 
 
-def learn_optimal_assignment(cost_df, building_capacity, art_capacity, lam):
+def learn_optimal_assignment(cost_df, building_capacity_df, art_capacity_df, lam):
     """ Return n_buildings x n_artworkks assignment array
     """
     C = cost_df.values
     num_buildings = cost_df.shape[0]
     num_arts = cost_df.shape[1]
+    building_capacity = building_capacity_df.values
+    art_capacity = art_capacity_df["capacity"].values
 
     dt = 0.001 #step size
     t = np.arange(1,num_arts + 1)
@@ -284,7 +355,84 @@ def learn_optimal_assignment(cost_df, building_capacity, art_capacity, lam):
                 theta = (np.sum(mu[0:idx_neg])-building_capacity[i])/(idx_neg)
                 P[i,:] =  np.maximum(P[i,:]-theta,0)
 
-    return P
+    return pd.DataFrame(P, index = cost_df.index,
+                   columns = art_capacity_df["string"].values)
+
+
+def validate_assignment(assignment_df):
+    """ Print validation dataframe
+
+    Input: 
+        assignment_df: (dataframe) output from `learn_optimal_assignment`
+
+    Output: 
+        Dataframe indexed by race and gender with probability of seeing 
+        identity on campus in optimized approach and baseline approach.
+    """
+
+    # Load validation data.
+    hall_df, student_df, art_df = load_data()
+
+    race_index = [r+","+r for r in list(student_df["race"].value_counts().keys()
+                                        ) if r!= "Unreported"]
+    race_index = ",".join(race_index).split(",")
+
+    gender_index = [list(student_df["gender"].value_counts().keys()
+                                        )for r in range(int(len(race_index)/2))]
+    gender_index = [",".join(g) for g in gender_index]
+    gender_index = ",".join(gender_index).split(",")
+
+    val_df = pd.DataFrame(np.zeros((len(race_index),3)), index = [
+        race_index, gender_index], columns = ["Optimized","Baseline","Total"])
+
+    # Get current art locations and process dataframe.
+    art_loc_df = pd.read_csv("../data/2021_05_07_Artist_Subject_Donor_Data_v3.csv"
+                                            )[["OBJECTID","HOMELOC"]]
+    art_df_with_loc = art_df.merge(art_loc_df, 
+                                    left_on = "objectid",
+                                    right_on = "OBJECTID")
+    art_df_with_loc = art_df_with_loc[art_df_with_loc["HOMELOC"
+                                        ] != "Crozier Fine Arts"]
+    art_df_with_loc["loc"] = [n.split("Medford, ")[-1].split(
+        "Boston, ")[-1].strip(" ").lower().replace(".","").replace(
+                        " ","_") for n in art_df_with_loc["HOMELOC"]]
+    art_df_with_loc["loc"] = art_df_with_loc["loc"].replace(
+                                    "eaton_hal","eaton_hall")
+    
+    # Iterative over buildings in question.
+    for h in assignment_df.index:
+        building_df = pd.read_csv("../data/filled_buildings/{}_students.csv".format(h))
+        
+        art_slice_df = art_df_with_loc[art_df_with_loc["loc"] == h]
+        
+        for c in val_df.index:
+            race = c[0]
+            gender = c[1]
+            
+            # Optimized probability of art in building with attribute race, gender
+            A = assignment_df.loc[[h],:]
+            P = A/np.sum(A.values)
+            try:
+                O_PP = P["{}, {}".format(gender, race)].iloc[0]
+            except: 
+                O_PP = 0
+            N = building_df[(building_df["race"] == race)&(
+                        building_df["gender"] == gender)].shape[0]
+            val_df.loc[(race, gender),"Optimized"] += O_PP * N
+            
+            
+            # Baseline probability of art in building with attribute c
+            B_PP = art_slice_df[(art_slice_df["race"] == race)&(
+                            art_slice_df["gender"] == gender)].shape[0]/art_slice_df.shape[0]
+            val_df.loc[(race, gender),"Baseline"] += B_PP * N
+            
+            # Total number of students with attribute c
+            val_df.loc[(race, gender),"Total"] += N
+    
+    val_df = pd.DataFrame(val_df.values/val_df["Total"].values.reshape(
+                -1,1), index = val_df.index, columns = val_df.columns)
+    
+    return val_df[["Optimized","Baseline"]]
 
 
 def run_art_assignment(method, alpha, lam):
