@@ -311,12 +311,14 @@ def compute_cost_matrix(art_df,
     return cost_df
 
 
-def learn_optimal_assignment(cost_df, building_capacity, art_capacity, lam):
+def learn_optimal_assignment(cost_df, building_capacity_df, art_capacity_df, lam):
     """ Return n_buildings x n_artworkks assignment array
     """
     C = cost_df.values
     num_buildings = cost_df.shape[0]
     num_arts = cost_df.shape[1]
+    building_capacity = building_capacity_df.values
+    art_capacity = art_capacity_df["capacity"].values
 
     dt = 0.001 #step size
     t = np.arange(1,num_arts + 1)
@@ -353,7 +355,9 @@ def learn_optimal_assignment(cost_df, building_capacity, art_capacity, lam):
                 theta = (np.sum(mu[0:idx_neg])-building_capacity[i])/(idx_neg)
                 P[i,:] =  np.maximum(P[i,:]-theta,0)
 
-    return P
+    return pd.DataFrame(P, index = cost_df.index,
+                   columns = art_capacity_df["string"].values)
+
 
 def validate_assignment(assignment_df):
     """ Print validation dataframe
