@@ -220,25 +220,27 @@ def beeswarm_building_gender(demo_cat, title, building_list = list(sc.hall_short
             for k,v in gender_dict.items():
                 count_df.loc[y,k] = v
 
-        for idx in count_df.index:
-            
+        y = 0
+        y_ticks = []
+        for idx in count_df.index:  
             for col in count_df.columns:
 
-                offset = (list(count_df.columns).index(col) - 1) * .25
+                x_values = np.arange(count_df.loc[idx,col]) + np.random.normal(0,10,count_df.loc[idx,col])
+                y_values = np.full(len(x_values),float(y))
+                y_values = y_values + np.random.normal(0,.5,len(y_values)) # add gaussian jitter.
 
-                x_values = np.arange(count_df.loc[idx,col])
-                y_values = np.full(len(x_values),float(y_labels.index(idx)) + offset)
-                y_values = y_values + np.random.normal(0,.05,len(y_values)) # add gaussian jitter.
-
-                s_values = np.full(len(x_values),3) # set marker size.
+                s_values = np.full(len(x_values),5) # set marker size.
 
                 axs.scatter(x_values, y_values, s = s_values, color = color_dict[col])
+                y = y+1
 
-            
-        axs.set_title(name, fontsize=20)
+            y_ticks.append(y-1.5)
+            y = y+.75
+        axs.set_title(name, fontsize = 25)
 
-        axs.set_yticks(range(count_df.shape[0]))
-        axs.set_yticklabels(count_df.index)
+        axs.set_yticks(y_ticks)
+        axs.set_yticklabels(count_df.index, fontsize = 15)
+
         
         axs.spines['right'].set_visible(False)
         axs.spines['top'].set_visible(False)
@@ -256,7 +258,7 @@ def beeswarm_building_gender(demo_cat, title, building_list = list(sc.hall_short
     axs.scatter([],[], color = "#c85194", s = [12], label = "Woman")
     axs.scatter([],[], color = COLOR_MAP["teal"], s = [12], label = "Transgender or Non-Binary")
     handles, labels = axs.get_legend_handles_labels()
-    fig.legend(handles, labels, loc='lower right', bbox_to_anchor=[1,0])
+    #fig.legend(handles, labels, loc='lower right', bbox_to_anchor=[1,0])
 
     #plt.suptitle(title, y  = .93, fontsize = 18)
     plt.show()
@@ -289,31 +291,37 @@ def beeswarm_gender(demo_df, demo_cat, title = "Total Count by Race and Gender")
         for k,v in gender_dict.items():
             count_df.loc[y,k] = v
 
-    fig, ax = plt.subplots(figsize = (10,5))
+    fig, ax = plt.subplots(figsize = (10,7))
+    y = 0
+    y_ticks = []
     for idx in count_df.index:        
         for col in ["Transgender","Woman","Man"]:
-            offset = (list(count_df.columns).index(col) - 2) * .25
 
-            x_values = np.arange(count_df.loc[idx,col])
-            y_values = np.full(len(x_values),float(y_labels.index(idx)) + offset)
-            y_values = y_values + np.random.normal(0,.05,len(y_values)) # add gaussian jitter.
+            x_values = np.arange(count_df.loc[idx,col]) + np.random.normal(0,10,count_df.loc[idx,col])
+            y_values = np.full(len(x_values),float(y))
+            y_values = y_values + np.random.normal(0,.5,len(y_values)) # add gaussian jitter.
 
-            s_values = np.full(len(x_values),3) # set marker size.
+            s_values = np.full(len(x_values),5) # set marker size.
 
             ax.scatter(x_values, y_values, s = s_values, color = color_dict[col])
+            y = y+1
 
+        y_ticks.append(y-1.5)
+        y = y+.75
 
-        
-    ax.scatter([],[], color = "#f1db54", s = [15], label = "Man")
-    ax.scatter([],[], color = "#c85194", s = [15], label = "Woman")
-    ax.scatter([],[], color = COLOR_MAP["teal"], s = [15], label = "Transgender or Non-Binary")
+    ax.scatter([],[], color = "#f1db54", s = [25], label = "Man")
+    ax.scatter([],[], color = "#c85194", s = [25], label = "Woman")
+    ax.scatter([],[], color = COLOR_MAP["teal"], s = [25], label = "Transgender or Non-Binary")
 
     ax.set_xlabel("Count")
-    ax.set_title(title)
+    ax.set_title(title, fontsize = 18)
 
-    ax.set_yticks(range(count_df.shape[0]))
-    ax.set_yticklabels(count_df.index)
+    ax.set_yticks(y_ticks)
+    ax.set_yticklabels(count_df.index, fontsize = 15)
 
-    plt.ylim(-0.5,7.5)
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+
+    plt.ylim(-0.5,y)
     plt.legend()
     plt.show()
