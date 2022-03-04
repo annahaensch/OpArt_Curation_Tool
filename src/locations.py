@@ -208,7 +208,7 @@ def get_hall_by_school_table():
     """
     Return num_halls x num_schools one-hot table.
     """
-    student_df = pd.read_csv("../data/2021_10_19_student_data_cleaned.csv", index_col = 0)
+    student_df = pd.read_csv("../data/2022_03_04_student_data_cleaned.csv", index_col = 0)
     schools = list(student_df["school"].unique())
 
     with open("../data/hall_dict.json") as json_file:
@@ -406,6 +406,7 @@ def get_student_enrollment_data():
     df_students["race_enum"] = [race_map[g] for g in df_students["race"]]
     df_students["region_enum"] = [region_map[g] for g in df_students["region"]]
     
+    df_students = df_students.reset_index().rename(columns = {"index":"student_id"})
     df_students.to_csv("../data/student_df.csv")
 
     return df_students
@@ -414,7 +415,7 @@ def fill_academic_building(building, student_df, hall_df):
 
     total_enrollment = student_df.shape[0]
     depts = [c for c in hall_df.columns if hall_df.loc[building,c] == 1]
-    df = student_df[student_df['school'].isin(depts)][["race","gender","region","race_enum","gender_enum","region_enum"]]
+    df = student_df[student_df['school'].isin(depts)]
 
     other_students = student_df[~student_df['school'].isin(depts)]
     extra_users = 0
@@ -425,7 +426,7 @@ def fill_academic_building(building, student_df, hall_df):
         extra_users += int(total_enrollment * (.02))
 
     idx = np.random.choice(other_students.index, extra_users, replace = False)
-    df = pd.concat([df,other_students.loc[idx,["race","gender","region","race_enum","gender_enum","region_enum"]]])
+    df = pd.concat([df,other_students.loc[idx,:]])
 
     df.reset_index(drop = True, inplace = True)
             
@@ -455,7 +456,7 @@ def fill_residence_halls(student_df, hall_df):
         else:
             idx = np.random.choice(remainder_df.index,v)
             
-        df = remainder_df.loc[idx,["race","gender","region","race_enum","gender_enum","region_enum"]]
+        df = remainder_df.loc[idx,:]
         
         assigned += list(idx)
         remainder_df = remainder_df[~remainder_df.index.isin(assigned)]

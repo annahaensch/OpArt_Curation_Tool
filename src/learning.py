@@ -45,7 +45,7 @@ def load_data():
                                 index_col = 0)
     
     # Gather artwork data.
-    art_df = pd.read_csv("../data/2021_10_04_art_data_cleaned.csv", 
+    art_df = pd.read_csv("../data/2022_03_04_art_data_cleaned.csv", 
         index_col = 0)
 
 
@@ -90,18 +90,12 @@ def get_building_capacity_df():
     Return dataframe of art capacity by building.
     """
     art_df = pd.read_csv(
-        "../data/2021_05_10_Artist_Subject_Donor_Data_Cleaned.csv", 
+        "../data/2022_03_04_art_data_cleaned.csv", 
         index_col = 0)
-    art_df = art_df[~art_df["homeloc"].isna()]
-    art_df = art_df[art_df["homeloc"] != "Crozier Fine Arts"]
 
-    # Clean strings
-    locs = [t.split("Medford, ")[-1] for t in art_df['homeloc']]
-    locs = [t.split("Boston, ")[-1] for t in locs]
-    locs = [t.replace(" ","_").replace(".","").strip("_").lower() for t in locs]
-    locs = [t.replace("eaton_hal","eaton_hall") for t in locs]
+    # Remove art in storage.
+    art_df = art_df[art_df["loc"] != "crozier_fine_arts"].copy()
 
-    art_df["loc"] = locs
     building_dict = art_df["loc"].value_counts().to_dict()
 
     building_df = pd.DataFrame([v for v in building_dict.values()
@@ -433,6 +427,80 @@ def validate_assignment(assignment_df):
                 -1,1), index = val_df.index, columns = val_df.columns)
     
     return val_df[["Optimized","Baseline"]]
+
+def baseline_average_value(category = "gender", in_group = "Man"):
+    # Load data
+    hall_df, student_df, art_df = load_data()
+    df = pd.DataFrame(np.nan,index = student_df["student_id"].values,
+                     columns = hall_df.index)
+    in_index = []
+    out_index = []
+    for h in hall_df.index:
+        df_h = pd.read_csv("../data/filled_buildings/{}_students.csv".format(h), index_col = 0)
+        # set value to 1 if student goes through building.
+        df.loc[df_h["student_id"].values,h] = 1
+    
+    # Divide by total buildings inhabited by student.
+    df = df/np.sum(df, axis = 1).values.reshape(-1,1)
+    df.fillna(0, inplace = True)
+    
+    # Count total number of art by by building and category. 
+    in_dict = art_df[art_df[category] == in_group]["loc"].value_counts().to_dict()
+    out_dict = art_df[art_df[category] != in_group]["loc"].value_counts().to_dict()
+  
+    # Computed expected values for "in group"
+    in_idx = student_df[student_df[category] == in_group].index
+    df_in = df.loc[in_idx]
+    df_in = df_in * np.array([in_dict.get(c,0) for c in df.columns]).reshape(1,-1)
+    in_expected = np.sum(df_in.values)/len(in_idx)
+    
+    # Compute expected value for non "in group"
+    out_idx = student_df[student_df[category] != in_group].index
+    df_out = df.loc[out_idx]
+    df_out = df_out * np.array(
+                        [out_dict.get(c,0) for c in df.columns]
+                        ).reshape(1,-1)
+
+    out_expected = np.sum(df_out.values)/len(out_idx)
+    
+    return in_expected, out_expected
+
+def optimized_average_value(assignment_df, category = "gender", in_group = "Man"):
+    # Load data
+    hall_df, student_df, art_df = load_data()
+    df = pd.DataFrame(np.nan,index = student_df["student_id"].values,
+                     columns = hall_df.index)
+    in_index = []
+    out_index = []
+    for h in hall_df.index:
+        df_h = pd.read_csv("../data/filled_buildings/{}_students.csv".format(h), index_col = 0)
+        # set value to 1 if student goes through building.
+        df.loc[df_h["student_id"].values,h] = 1
+    
+    # Divide by total buildings inhabited by student.
+    df = df/np.sum(df, axis = 1).values.reshape(-1,1)
+    df.fillna(0, inplace = True)
+    
+    # Count total number of art by by building and category. 
+    in_dict = art_df[art_df[category] == in_group]["loc"].value_counts().to_dict()
+    out_dict = art_df[art_df[category] != in_group]["loc"].value_counts().to_dict()
+  
+    # Computed expected values for "in group"
+    in_idx = student_df[student_df[category] == in_group].index
+    df_in = df.loc[in_idx]
+    df_in = df_in * np.sum(assignment_df[
+        [c for c in assignment_df.columns if in_group in c]], axis = 1).values.reshape(1,-1)
+    in_expected = np.sum(df_in.values)/len(in_idx)
+    
+    # Compute expected value for non "in group"
+    out_idx = student_df[student_df[category] != in_group].index
+    df_out = df.loc[out_idx]
+    df_out = df_out * np.sum(assignment_df[
+        [c for c in assignment_df.columns if not in_group in c]], axis = 1).values.reshape(1,-1)
+
+    out_expected = np.sum(df_out.values)/len(out_idx)
+    
+    return in_expected, out_expected
 
 
 def run_art_assignment(method, alpha, lam):
