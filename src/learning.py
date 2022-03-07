@@ -273,7 +273,7 @@ def compute_cost_matrix(art_df,
         stu_build_norm = stu_build_norm.reshape(stu_build_norm.shape[0],1,-1)
 
         # Array with dimension #students x 1 x 1
-        numerator = alpha * stu_build_norm
+        numerator = stu_build_norm
         
         # Compute denominator
         student_enum = df[cat_enum].values.reshape(df.shape[0],-1,len(categories))
@@ -292,11 +292,11 @@ def compute_cost_matrix(art_df,
         art_likelihood = np.prod(df_quant_a, axis = 1).values.reshape(-1, new_art_df.shape[0])
         
         # Array with dimension #students x 1 x #artworks
-        denominator = beta * stu_art_norm * art_likelihood
+        denominator = stu_art_norm * art_likelihood
         denominator = denominator.reshape(denominator.shape[0],-1,denominator.shape[1])
 
 
-        art_prob = np.sum((numerator / denominator), axis = 0)
+        art_prob = (alpha / beta) * np.sum((numerator / denominator), axis = 0)
         art_prob = np.exp(art_prob - logsumexp(art_prob))
 
         assert np.abs(np.sum(art_prob) - 1) < 1e-08
