@@ -262,7 +262,8 @@ def compute_cost_matrix(art_df,
 
         # One-hot array with dimension #students x #categories where entry
         # [i,k] = 1 if student i shares attribute k with the building mode.
-        stu_build_delta = np.where(df[cat_enum].values - df[cat_enum].mode().values == 0,0,1)
+        bld_mode = df[cat_enum].mode().values[0,:].reshape(-1,len(cat_enum))
+        stu_build_delta = np.where(df[cat_enum].values - bld_mode == 0,0,1)
         
         # Array of differences between student quantile and mode quantile.
         diff = (df_quant_s.values - df_quant_mode.values).astype(float)
