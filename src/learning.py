@@ -15,6 +15,11 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 logging.basicConfig(level=logging.INFO)
 
+import sys
+sys.path.append('..')
+
+import src as sc
+
 def get_mapping_dicts():
     """
     Get enum to name mappings for gender, race, and region.
@@ -41,16 +46,12 @@ def load_data():
     #hall_df = hall_df[hall_df.index != "capen_house"]
 
     # Gather student data
-    student_df = pd.read_csv("../data/student_df.csv", 
-                                index_col = 0)
+    student_df = sc.get_student_enrollment_data()
     
     # Gather artwork data.
-    art_df = pd.read_csv("../data/2022_03_04_art_data_cleaned.csv", 
-        index_col = 0)
-
+    art_df = sc.process_art_dataframe()
 
     return hall_df, student_df, art_df
-
 
 
 def get_quantized_student_data(student_df,gender_map, race_map, region_map):

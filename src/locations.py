@@ -242,174 +242,30 @@ def get_hall_by_school_table():
 
 
 def get_student_enrollment_data():
-    df1 = pd.read_csv("../data/2021_10_19_EC_school_gender_race.csv")
+    df_total = sc.process_student_dataframe()
+    df_students = pd.DataFrame()
+    for i in df_total.index:
+        df = pd.DataFrame(index = range(df_total.loc[i,"total"]), columns = ["school","gender","race"])
+        df["school"] = df_total.loc[i,"school"]
+        df["gender"] = df_total.loc[i,"gender"]
+        df["race"] = df_total.loc[i,"race"]
 
-    # Drop empty rows.
-    df1.dropna(how = "all", axis = 0, inplace = True)
+        df_students = pd.concat([df_students, df])
+    assert df_students.shape[0] == 13293 # Known total enrollment Fall 2021
 
-    # Replace Female with "Woman" and Male with "Man"
-    df1.replace({"Female":"Woman","Male":"Man"}, inplace = True)
-
-    # Replace "Unknown" with "Unreported"
-    df1.replace({"Race/Ethnicity unknown":"Unreported"}, inplace = True)
-    df1.replace({"Unknown":"Unreported"}, inplace = True)
-
-    # Replace "Black of African American" with "Black or African American",
-    df1.replace({"Black of African American":"Black or African American"}, inplace = True)
-
-    # Replace "Fletcher" with "Fletcher School",
-    df1.replace({"Fletcher":"Fletcher School"}, inplace = True)
-
-    # Forward Fill empty School and Gender categories.
-    df1["Gender"] = df1["Gender"].fillna(method = "ffill")
-    df1["School"] = df1["School"].fillna(method = "ffill")
-
-    schools = [
-                ['Arts & Sciences – Liberal Arts', 'Arts & Sciences – Grad'],
-                ['Arts & Sciences – SMFA'], 
-                ['School of Engineering – Undergrad', 'School of Engineering – Grad'],
-                ['Cummings School of Veterinary Medicine'], 
-                ['Fletcher School'],
-                ['Friedman SNSP'], ['Graduate School of Biomedical Sciences'],
-                ['School of Dental Medicine'], 
-                ['School of Medicine (MD)','School of Medicine (PHPD)'], ['University College'],
-                ['College of Special Studies']
-    ]
-
-    G = df1.groupby("School")
-
-    df_list = []
-    for school in schools:
-        df = G.get_group(school[0]).copy()
-        if len(school) > 1:
-
-            dfa = G.get_group(school[0])
-            dfb = G.get_group(school[1])
-            
-            df["Count"] = dfa["Count"].values + dfb["Count"].values
-            df["International Totals"] = dfa["International Totals"].values + dfb["International Totals"].values
-            df["School"] = school[0].split(" – ")[0].split(" (")[0]
-        
-        df_list.append(df)
-        
-    df1 = pd.concat(df_list)
-    df1.reset_index(drop = True, inplace = True)
-
-    # Sort alphabetically by School
-    df1.sort_values(by = ["School","Gender","Race/Ethnicity","Region"], inplace = True)
-
-    assert df1["Count"].sum() + df1["International Totals"].sum() == 12219 # Should sum to 12219
-
-
-    df2 = pd.read_csv("../data/2021_10_04_EC_school_gender_region.csv")
-
-    # Drop empty rows.
-    df2.dropna(how = "all", axis = 0, inplace = True)
-
-    # Replace Female with "Woman" and Male with "Man"
-    df2.replace({"Female":"Woman","Male":"Man"}, inplace = True)
-
-    # Replace "Unknown" with "Unreported"
-    df2.replace({"Race/Ethnicity unknown":"Unreported"}, inplace = True)
-    df2.replace({"Unknown":"Unreported"}, inplace = True)
-
-    # Replace "Black of African American" with "Black or African American",
-    df2.replace({"Black of African American":"Black or African American"}, inplace = True)
-
-    # Forward Fill empty School and Gender categories.
-    df2["Gender"] = df2["Gender"].fillna(method = "ffill")
-    df2["School"] = df2["School"].fillna(method = "ffill")
-
-    # Sort alphabetically by School
-    df2.sort_values(by = ["School","Gender","Race/Ethnicity","Region"], inplace = True)
-
-    assert df2["Count"].sum() == 12219 # Should sum to 12219.
-
-    df_list = []
-
-    G1 = df1.groupby("School")
-    G2 = df2.groupby("School")
-
-    for school in df1["School"].unique():
-        dfa = G1.get_group(school)
-
-        if school in df2["School"].unique():
-            dfb = G2.get_group(school)
-
-            # Check that values are in synch.
-            if dfa["Count"].sum() + dfa["International Totals"].sum() == dfb["Count"].sum():
-                df_list.append(dfb[["School","Gender","Race/Ethnicity","Region","Count"]])
-                
-            else:
-                # Check that only Arts & Sciences is out of synch.
-                assert school == "Arts & Sciences"
-
-    df = pd.concat(df_list)
-    df.reset_index(drop = True, inplace = True)
-
-    # Now synch up Arts & Sciences
-    df_list = []
-    G1 = df1[~df1["School"].isin(df["School"].unique())].groupby("Gender")
-    G2 = df2[df2["School"] == "Arts & Sciences"].groupby("Gender")
-
-    for gender in df1["Gender"].unique():
-        d1 = G1.get_group(gender)
-        d2 = G2.get_group(gender)
-        
-        # Enumerate and Quantize International Regions
-        p = d2[d2["Race/Ethnicity"] == "International"]["Count"].values
-        p = p/p.sum()
-        a = d2[d2["Race/Ethnicity"] == "International"]["Region"].unique()
-        
-        # Sample international students by school
-        for school in d1["School"].unique():
-            df_school = d1[d1["School"] == school].copy()
-            size = df_school["International Totals"].sum()
-            stu = pd.Series(np.random.choice(a = a, size = int(size), p = p)).value_counts().to_dict()
-            
-            # Add student counts to df_school
-            for k,v in stu.items():
-                df_school.loc[df_school[(df_school["Region"] == k)&(df_school["Race/Ethnicity"] == "International")].index,"Count"] = v
-            
-            df_list.append(df_school)
-            
-    df_list.append(df)
-    df = pd.concat(df_list)
-    df["Count"].fillna(0, inplace = True)
-    df.sort_values(by = ["School","Gender","Race/Ethnicity","Region"], inplace = True)
-    df.reset_index(drop = True, inplace = True)
-
-    # Replace "international" with "Unreported",
-    df.replace({"International":"Unreported"}, inplace = True)
-    df.replace({"Arts & Sciences":"School of Arts & Sciences",
-                "Arts & Sciences – SMFA":"School at the Museum of Fine Arts",
-                'Cummings School of Veterinary Medicine':"School of Veterinary Medicine",
-                'Fletcher School':'School of Law and Diplomacy',
-                'Friedman SNSP':'School of Nutrition and Science Policy',
-                'Nat. Hawaiian or Other Pac Island':"Nat. Hawaiian or Other Pac Island"
-               }, 
-               inplace = True)
-
-    df_list = []
-    for i in df.index:
-        count = df.loc[i,"Count"]
-        df_i = pd.DataFrame(int(count) * [list(df.iloc[i,:4])],
-                     columns = ["school","gender","race","region"])
-        df_list.append(df_i)
-        
-    df_students = pd.concat(df_list)
     df_students.reset_index(drop = True, inplace = True)
+    df_students.reset_index(inplace = True)
+    df_students.rename(columns = {"index":"student_id"}, inplace = True)
 
     gender_map, race_map, region_map = sc.get_mapping_dicts()
 
     df_students["gender_enum"] = [gender_map[g] for g in df_students["gender"]]
     df_students["race_enum"] = [race_map[g] for g in df_students["race"]]
-    df_students["region_enum"] = [region_map[g] for g in df_students["region"]]
-    
-    df_students = df_students.reset_index().rename(columns = {"index":"student_id"})
+
     df_students.to_csv("../data/student_df.csv")
 
     return df_students
+
 
 def fill_academic_building(building, student_df, hall_df):
 

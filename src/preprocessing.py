@@ -129,7 +129,7 @@ student_demo_dict = {
              'Nat. Hawaiian or Other Pac Island',
              'White',
              'Two or more races',
-             'International',
+             "Unreported",
              "Unreported"],
         "Man":
             ["American Indian or Alaska Native",
@@ -139,7 +139,7 @@ student_demo_dict = {
             'Nat. Hawaiian or Other Pac Island',
             'White',
             'Two or more races',
-            'International',
+            "Unreported",
             "Unreported"
          ]},
     'School of Arts & Sciences - Grad':
@@ -149,7 +149,7 @@ student_demo_dict = {
             'Hispanics of any race', 
             'White',
             'Two or more races',
-            'International',
+            "Unreported",
             "Unreported"],
         "Man":
             ["American Indian or Alaska Native",
@@ -158,7 +158,7 @@ student_demo_dict = {
             'Hispanics of any race', 
             'White',
             'Two or more races',
-            'International',
+            "Unreported",
             "Unreported"
          ]},
     'School at the Museum of Fine Arts':
@@ -169,7 +169,7 @@ student_demo_dict = {
             'Hispanics of any race', 
             'White',
             'Two or more races',
-            'International',
+            "Unreported",
             "Unreported"],
         "Man":
             ['Asian', 
@@ -177,7 +177,7 @@ student_demo_dict = {
             'Hispanics of any race', 
             'White',
             'Two or more races',
-            'International',
+            "Unreported",
             "Unreported"
          ]},
     "School of Engineering - Undergrad": 
@@ -188,7 +188,7 @@ student_demo_dict = {
             'Nat. Hawaiian or Other Pac Island',
             'White',
             'Two or more races',
-            'International',
+            "Unreported",
             "Unreported"],
         "Man":
             ['Asian', 
@@ -197,7 +197,7 @@ student_demo_dict = {
             'Nat. Hawaiian or Other Pac Island',
             'White',
             'Two or more races',
-            'International',
+            "Unreported",
             "Unreported"
          ]},
     "School of Engineering - Grad":
@@ -209,7 +209,7 @@ student_demo_dict = {
             'Nat. Hawaiian or Other Pac Island',
             'White',
             'Two or more races',
-            'International',
+            "Unreported",
             "Unreported"],
         "Man":
             ['Asian', 
@@ -217,7 +217,7 @@ student_demo_dict = {
             'Hispanics of any race', 
             'White',
             'Two or more races',
-            'International',
+            "Unreported",
             "Unreported"
          ]},
     "School of Veterinary Medicine":
@@ -227,14 +227,14 @@ student_demo_dict = {
             'Hispanics of any race', 
             'White',
             'Two or more races',
-            'International',
+            "Unreported",
             "Unreported"],
         "Man":
             ['Asian', 
             'Hispanics of any race', 
             'White',
             'Two or more races',
-            'International',
+            "Unreported",
          ]},
     'School of Law and Diplomacy':
         {"Woman":
@@ -243,7 +243,7 @@ student_demo_dict = {
             'Hispanics of any race', 
             'White',
             'Two or more races',
-            'International',
+            "Unreported",
             "Unreported"],
         "Man":
             ['Asian', 
@@ -251,7 +251,7 @@ student_demo_dict = {
             'Hispanics of any race', 
             'White',
             'Two or more races',
-            'International',
+            "Unreported",
             "Unreported"
          ]},
     'School of Nutrition and Science Policy':
@@ -261,7 +261,7 @@ student_demo_dict = {
             'Hispanics of any race', 
             'White',
             'Two or more races',
-            'International',
+            "Unreported",
             "Unreported"],
         "Man":
             ['Asian', 
@@ -269,7 +269,7 @@ student_demo_dict = {
             'Hispanics of any race', 
             'White',
             'Two or more races',
-            'International'
+            "Unreported"
          ]},
     'Graduate School of Biomedical Sciences':
         {"Woman":
@@ -278,7 +278,7 @@ student_demo_dict = {
             'Hispanics of any race', 
             'White',
             'Two or more races',
-            'International',
+            "Unreported",
             "Unreported"],
         "Man":
             ['Asian', 
@@ -286,7 +286,7 @@ student_demo_dict = {
             'Hispanics of any race', 
             'White',
             'Two or more races',
-            'International',
+            "Unreported",
             "Unreported"
          ]},
     "School of Dental Medicine":
@@ -296,7 +296,7 @@ student_demo_dict = {
             'Hispanics of any race', 
             'White',
             'Two or more races',
-            'International',
+            "Unreported",
             "Unreported"],
         "Man":
             ["American Indian or Alaska Native",
@@ -305,7 +305,7 @@ student_demo_dict = {
             'Hispanics of any race', 
             'White',
             'Two or more races',
-            'International',
+            "Unreported",
             "Unreported"
          ]},
     "School of Medicine - MD":
@@ -315,7 +315,7 @@ student_demo_dict = {
             'Hispanics of any race',  
             'White',
             'Two or more races',
-            'International',
+            "Unreported",
             "Unreported"],
         "Man":
             ["American Indian or Alaska Native",
@@ -334,7 +334,7 @@ student_demo_dict = {
             'Nat. Hawaiian or Other Pac Island',
             'White',
             'Two or more races',
-            'International',
+            "Unreported",
             "Unreported"],
         "Man":
             ['Asian', 
@@ -342,7 +342,7 @@ student_demo_dict = {
             'Hispanics of any race', 
             'White',
             'Two or more races',
-            'International',
+            "Unreported",
             "Unreported"
          ]},
     "University College":
@@ -352,7 +352,7 @@ student_demo_dict = {
             'Hispanics of any race', 
             'White',
             'Two or more races',
-            'International',
+            "Unreported",
             "Unreported"],
         "Man":
             ['Asian', 
@@ -366,7 +366,7 @@ student_demo_dict = {
             ['Black or African American',
             'Hispanics of any race', 
             'White',
-            'International',
+            "Unreported",
             "Unreported"],
         "Man":
             ['Black or African American',
