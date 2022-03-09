@@ -64,10 +64,8 @@ def get_quantized_student_data(student_df,gender_map, race_map, region_map):
                                             0)/S for g in gender_map.values()}
     race_quant = {g:student_df["race_enum"].value_counts().to_dict().get(g,
                                             0)/S for g in race_map.values()}
-    region_quant = {g:student_df["region_enum"].value_counts().to_dict().get(g,                             
-                                            0)/S for g in region_map.values()}
 
-    return gender_quant, race_quant, region_quant
+    return gender_quant, race_quant
 
 
 def get_quantized_art_data(art_df,gender_map, race_map, region_map):
@@ -80,10 +78,8 @@ def get_quantized_art_data(art_df,gender_map, race_map, region_map):
                                             for g in gender_map.values()}
     race_quant = {g:art_df["race_enum"].value_counts().to_dict().get(g,0)/A 
                                             for g in race_map.values()}
-    region_quant = {g:art_df["region_enum"].value_counts().to_dict().get(g,0)/A 
-                                            for g in region_map.values()}
 
-    return gender_quant, race_quant, region_quant
+    return gender_quant, race_quant
 
 
 def get_building_capacity_df():
@@ -106,13 +102,13 @@ def get_building_capacity_df():
     return building_df
 
 
-def get_art_capacity_with_downsampling(art_df, categories = ["gender","race","region"]):
+def get_art_capacity_with_downsampling(art_df, categories = ["gender","race"]):
     """
     Return dataframe with columns "tuple","original_index","capacity".
 
     Input:
         art_df: (dataframe) art works with attributes
-        categories: (list of strings) list containing "gender","race" or "region".
+        categories: (list of strings) list containing "gender" or "race".
 
     Returns:
         Datraframe with downsampled category tuples, original artwork indices,
@@ -163,7 +159,7 @@ def get_art_capacity_with_downsampling(art_df, categories = ["gender","race","re
 
 def compute_cost_matrix(art_df, 
                 hall_df,
-                categories = ["gender","race","region"],
+                categories = ["gender","race"],
                 alpha = -1,
                 beta = 100):
     """
@@ -172,8 +168,7 @@ def compute_cost_matrix(art_df,
     Input:
         art_df: (dataframe) art works with attributes
         hall_df: (dataframe) one-hot dataframe with halls as index, schools as columns
-        categories: (list of strings) list containing "gender",
-            "race" or "region".
+        categories: (list of strings) list containing "gender" or "race".
         alpha: (float) model parameter determining outlier importance.
         beta: (float) model parameter determining art rep. importance.
         
@@ -211,8 +206,8 @@ def compute_cost_matrix(art_df,
                         region_map = mapping_dict["region"])
 
     quant_a_dict = {"gender":quant_a[0],
-                   "race":quant_a[1],
-                   "region":quant_a[2]}
+                   "race":quant_a[1]
+                   }
 
     for c in categories:
         new_art_df["{}_quant".format(c)] = new_art_df["{}_enum".format(c)].map(quant_a_dict[c])
@@ -246,8 +241,7 @@ def compute_cost_matrix(art_df,
                         region_map = mapping_dict["region"])
 
         quant_s_dict = {"gender":quant_s[0],
-                       "race":quant_s[1],
-                       "region":quant_s[2]}
+                       "race":quant_s[1]}
 
         
         for c in categories:
