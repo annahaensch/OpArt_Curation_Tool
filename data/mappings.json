@@ -1,0 +1,34 @@
+{
+"gender_mapping" : 
+	{
+	"Unreported" : 0,
+	"Woman" : 1, 
+	"Man" : 2, 
+	"Woman & Man" : 3,
+	"Non-Binary" : 4,
+	"Transgender" : 5
+	},
+"race_mapping" : 
+	{
+	"Unreported":0, 
+	"White":1, 
+	"Asian":2, 
+	"Hispanics of any race":3, 
+	"Black or African American":4, 
+	"Two or more races":5,
+	"American Indian or Alaska Native":6,
+	"Nat. Hawaiian or Other Pac Island":7
+	},
+"region_mapping" : 
+	{
+	"Unreported":0,
+	"North America":1, 
+	"Asia":2, 
+	"Europe":3, 
+	"Africa":4, 
+	"South America":5, 
+	"Caribbean":6, 
+	"Oceania":7,
+	"Central America":8
+	}
+}
