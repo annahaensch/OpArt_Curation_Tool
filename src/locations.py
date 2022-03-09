@@ -242,7 +242,9 @@ def get_hall_by_school_table():
 
 
 def get_student_enrollment_data():
-    df_total = sc.process_student_dataframe()
+    #df_total = sc.process_student_dataframe()
+    df_total = pd.read_csv("../data/Tufts_2021_Fall_Enrollment_Calculator_Data.csv", index_col = 0)
+    
     df_students = pd.DataFrame()
     for i in df_total.index:
         df = pd.DataFrame(index = range(df_total.loc[i,"total"]), columns = ["school","gender","race"])
