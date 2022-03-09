@@ -1,0 +1,198 @@
+,school,gender,race,full_time,part_time,total
+0,School of Arts & Sciences,Woman,American Indian or Alaska Native,1,0,1
+1,School of Arts & Sciences,Woman,Asian,433,7,440
+2,School of Arts & Sciences,Woman,Black or African American,172,1,173
+3,School of Arts & Sciences,Woman,Hispanics of any race,260,11,271
+4,School of Arts & Sciences,Woman,Nat. Hawaiian or Other Pac Island,1,0,1
+5,School of Arts & Sciences,Woman,White,1201,27,1228
+6,School of Arts & Sciences,Woman,Two or more races,193,4,197
+7,School of Arts & Sciences,Woman,Unreported,278,2,280
+8,School of Arts & Sciences,Woman,Unreported,98,6,104
+9,School of Arts & Sciences,Man,American Indian or Alaska Native,2,0,2
+10,School of Arts & Sciences,Man,Asian,278,6,284
+11,School of Arts & Sciences,Man,Black or African American,86,0,86
+12,School of Arts & Sciences,Man,Hispanics of any race,185,4,189
+13,School of Arts & Sciences,Man,Nat. Hawaiian or Other Pac Island,3,0,3
+14,School of Arts & Sciences,Man,White,1147,32,1179
+15,School of Arts & Sciences,Man,Two or more races,136,1,137
+16,School of Arts & Sciences,Man,Unreported,224,0,224
+17,School of Arts & Sciences,Man,Unreported,80,3,83
+18,School of Arts & Sciences,Woman,Asian,51,13,64
+19,School of Arts & Sciences,Woman,Black or African American,19,14,33
+20,School of Arts & Sciences,Woman,Hispanics of any race,49,22,71
+21,School of Arts & Sciences,Woman,White,331,115,446
+22,School of Arts & Sciences,Woman,Two or more races,20,5,25
+23,School of Arts & Sciences,Woman,Unreported,142,7,149
+24,School of Arts & Sciences,Woman,Unreported,9,6,15
+25,School of Arts & Sciences,Man,American Indian or Alaska Native,1,0,1
+26,School of Arts & Sciences,Man,Asian,18,6,24
+27,School of Arts & Sciences,Man,Black or African American,10,9,19
+28,School of Arts & Sciences,Man,Hispanics of any race,17,12,29
+29,School of Arts & Sciences,Man,White,151,60,211
+30,School of Arts & Sciences,Man,Two or more races,8,3,11
+31,School of Arts & Sciences,Man,Unreported,112,9,121
+32,School of Arts & Sciences,Man,Unreported,9,7,16
+33,School at the Museum of Fine Arts,Woman,American Indian or Alaska Native,1,0,1
+34,School at the Museum of Fine Arts,Woman,Asian,71,1,72
+35,School at the Museum of Fine Arts,Woman,Black or African American,9,0,9
+36,School at the Museum of Fine Arts,Woman,Hispanics of any race,40,0,40
+37,School at the Museum of Fine Arts,Woman,White,179,4,183
+38,School at the Museum of Fine Arts,Woman,Two or more races,33,0,33
+39,School at the Museum of Fine Arts,Woman,Unreported,103,0,103
+40,School at the Museum of Fine Arts,Woman,Unreported,16,1,17
+41,School at the Museum of Fine Arts,Man,Asian,13,0,13
+42,School at the Museum of Fine Arts,Man,Black or African American,8,0,8
+43,School at the Museum of Fine Arts,Man,Hispanics of any race,10,1,11
+44,School at the Museum of Fine Arts,Man,White,37,3,40
+45,School at the Museum of Fine Arts,Man,Two or more races,8,0,8
+46,School at the Museum of Fine Arts,Man,Unreported,33,0,33
+47,School at the Museum of Fine Arts,Man,Unreported,3,1,4
+48,School of Engineering,Woman,Asian,116,0,116
+49,School of Engineering,Woman,Black or African American,31,0,31
+50,School of Engineering,Woman,Hispanics of any race,37,0,37
+51,School of Engineering,Woman,Nat. Hawaiian or Other Pac Island,1,0,1
+52,School of Engineering,Woman,White,260,3,263
+53,School of Engineering,Woman,Two or more races,42,0,42
+54,School of Engineering,Woman,Unreported,52,0,52
+55,School of Engineering,Woman,Unreported,23,0,23
+56,School of Engineering,Man,Asian,105,2,107
+57,School of Engineering,Man,Black or African American,34,1,35
+58,School of Engineering,Man,Hispanics of any race,59,1,60
+59,School of Engineering,Man,Nat. Hawaiian or Other Pac Island,1,0,1
+60,School of Engineering,Man,White,318,2,320
+61,School of Engineering,Man,Two or more races,42,0,42
+62,School of Engineering,Man,Unreported,82,0,82
+63,School of Engineering,Man,Unreported,26,0,26
+64,School of Engineering,Woman,American Indian or Alaska Native,1,0,1
+65,School of Engineering,Woman,Asian,15,17,32
+66,School of Engineering,Woman,Black or African American,4,2,6
+67,School of Engineering,Woman,Hispanics of any race,13,12,25
+68,School of Engineering,Woman,Nat. Hawaiian or Other Pac Island,0,1,1
+69,School of Engineering,Woman,White,63,92,155
+70,School of Engineering,Woman,Two or more races,10,4,14
+71,School of Engineering,Woman,Unreported,92,7,99
+72,School of Engineering,Woman,Unreported,1,8,9
+73,School of Engineering,Man,Asian,23,24,47
+74,School of Engineering,Man,Black or African American,5,10,15
+75,School of Engineering,Man,Hispanics of any race,9,16,25
+76,School of Engineering,Man,White,118,149,267
+77,School of Engineering,Man,Two or more races,9,6,15
+78,School of Engineering,Man,Unreported,219,15,234
+79,School of Engineering,Man,Unreported,6,8,14
+80,School of Veterinary Medicine,Woman,Asian,28,1,29
+81,School of Veterinary Medicine,Woman,Black or African American,5,0,5
+82,School of Veterinary Medicine,Woman,Hispanics of any race,29,2,31
+83,School of Veterinary Medicine,Woman,White,299,6,305
+84,School of Veterinary Medicine,Woman,Two or more races,19,0,19
+85,School of Veterinary Medicine,Woman,Unreported,12,0,12
+86,School of Veterinary Medicine,Woman,Unreported,12,0,12
+87,School of Veterinary Medicine,Man,Asian,3,0,3
+88,School of Veterinary Medicine,Man,Hispanics of any race,1,0,1
+89,School of Veterinary Medicine,Man,White,48,0,48
+90,School of Veterinary Medicine,Man,Two or more races,1,0,1
+91,School of Veterinary Medicine,Man,Unreported,2,0,2
+92,School of Law and Diplomacy,Woman,Asian,16,7,23
+93,School of Law and Diplomacy,Woman,Black or African American,13,5,18
+94,School of Law and Diplomacy,Woman,Hispanics of any race,16,7,23
+95,School of Law and Diplomacy,Woman,White,131,42,173
+96,School of Law and Diplomacy,Woman,Two or more races,11,3,14
+97,School of Law and Diplomacy,Woman,Unreported,122,3,125
+98,School of Law and Diplomacy,Woman,Unreported,7,6,13
+99,School of Law and Diplomacy,Man,Asian,8,5,13
+100,School of Law and Diplomacy,Man,Black or African American,8,1,9
+101,School of Law and Diplomacy,Man,Hispanics of any race,9,3,12
+102,School of Law and Diplomacy,Man,White,118,39,157
+103,School of Law and Diplomacy,Man,Two or more races,5,3,8
+104,School of Law and Diplomacy,Man,Unreported,108,2,110
+105,School of Law and Diplomacy,Man,Unreported,8,5,13
+106,School of Nutrition and Science Policy,Woman,Asian,12,1,13
+107,School of Nutrition and Science Policy,Woman,Black or African American,4,3,7
+108,School of Nutrition and Science Policy,Woman,Hispanics of any race,16,3,19
+109,School of Nutrition and Science Policy,Woman,White,112,37,149
+110,School of Nutrition and Science Policy,Woman,Two or more races,6,1,7
+111,School of Nutrition and Science Policy,Woman,Unreported,59,2,61
+112,School of Nutrition and Science Policy,Woman,Unreported,0,1,1
+113,School of Nutrition and Science Policy,Man,Asian,2,0,2
+114,School of Nutrition and Science Policy,Man,Black or African American,1,1,2
+115,School of Nutrition and Science Policy,Man,Hispanics of any race,3,1,4
+116,School of Nutrition and Science Policy,Man,White,19,5,24
+117,School of Nutrition and Science Policy,Man,Two or more races,1,0,1
+118,School of Nutrition and Science Policy,Man,Unreported,9,0,9
+119,Graduate School of Biomedical Sciences,Woman,Asian,17,2,19
+120,Graduate School of Biomedical Sciences,Woman,Black or African American,7,1,8
+121,Graduate School of Biomedical Sciences,Woman,Hispanics of any race,11,1,12
+122,Graduate School of Biomedical Sciences,Woman,White,59,2,61
+123,Graduate School of Biomedical Sciences,Woman,Two or more races,5,0,5
+124,Graduate School of Biomedical Sciences,Woman,Unreported,28,0,28
+125,Graduate School of Biomedical Sciences,Woman,Unreported,0,1,1
+126,Graduate School of Biomedical Sciences,Man,Asian,2,1,3
+127,Graduate School of Biomedical Sciences,Man,Black or African American,2,0,2
+128,Graduate School of Biomedical Sciences,Man,Hispanics of any race,7,0,7
+129,Graduate School of Biomedical Sciences,Man,White,45,5,50
+130,Graduate School of Biomedical Sciences,Man,Two or more races,3,0,3
+131,Graduate School of Biomedical Sciences,Man,Unreported,11,0,11
+132,Graduate School of Biomedical Sciences,Man,Unreported,1,0,1
+133,School of Dental Medicine,Woman,Asian,164,1,165
+134,School of Dental Medicine,Woman,Black or African American,90,2,92
+135,School of Dental Medicine,Woman,Hispanics of any race,81,1,82
+136,School of Dental Medicine,Woman,White,193,2,195
+137,School of Dental Medicine,Woman,Two or more races,13,0,13
+138,School of Dental Medicine,Woman,Unreported,42,1,43
+139,School of Dental Medicine,Woman,Unreported,36,0,36
+140,School of Dental Medicine,Man,American Indian or Alaska Native,1,0,1
+141,School of Dental Medicine,Man,Asian,105,1,106
+142,School of Dental Medicine,Man,Black or African American,33,1,34
+143,School of Dental Medicine,Man,Hispanics of any race,35,1,36
+144,School of Dental Medicine,Man,White,154,5,159
+145,School of Dental Medicine,Man,Two or more races,12,0,12
+146,School of Dental Medicine,Man,Unreported,43,0,43
+147,School of Dental Medicine,Man,Unreported,17,0,17
+148,School of Medicine,Woman,Asian,96,0,96
+149,School of Medicine,Woman,Black or African American,30,0,30
+150,School of Medicine,Woman,Hispanics of any race,44,0,44
+151,School of Medicine,Woman,White,229,0,229
+152,School of Medicine,Woman,Two or more races,30,0,30
+153,School of Medicine,Woman,Unreported,1,0,1
+154,School of Medicine,Woman,Unreported,12,0,12
+155,School of Medicine,Man,American Indian or Alaska Native,1,0,1
+156,School of Medicine,Man,Asian,78,0,78
+157,School of Medicine,Man,Black or African American,27,0,27
+158,School of Medicine,Man,Hispanics of any race,40,0,40
+159,School of Medicine,Man,White,200,0,200
+160,School of Medicine,Man,Two or more races,11,0,11
+161,School of Medicine,Man,Unreported,10,0,10
+162,School of Medicine,Woman,Asian,78,22,100
+163,School of Medicine,Woman,Black or African American,27,13,40
+164,School of Medicine,Woman,Hispanics of any race,31,14,45
+165,School of Medicine,Woman,Nat. Hawaiian or Other Pac Island,1,0,1
+166,School of Medicine,Woman,White,212,63,275
+167,School of Medicine,Woman,Two or more races,27,6,33
+168,School of Medicine,Woman,Unreported,24,2,26
+169,School of Medicine,Woman,Unreported,17,10,27
+170,School of Medicine,Man,Asian,40,4,44
+171,School of Medicine,Man,Black or African American,12,4,16
+172,School of Medicine,Man,Hispanics of any race,16,1,17
+173,School of Medicine,Man,White,78,20,98
+174,School of Medicine,Man,Two or more races,4,3,7
+175,School of Medicine,Man,Unreported,3,2,5
+176,School of Medicine,Man,Unreported,5,2,7
+177,University College,Woman,Asian,0,4,4
+178,University College,Woman,Black or African American,0,5,5
+179,University College,Woman,Hispanics of any race,0,7,7
+180,University College,Woman,White,0,26,26
+181,University College,Woman,Two or more races,0,2,2
+182,University College,Woman,Unreported,0,2,2
+183,University College,Woman,Unreported,0,5,5
+184,University College,Man,Asian,0,1,1
+185,University College,Man,Black or African American,0,4,4
+186,University College,Man,Hispanics of any race,0,1,1
+187,University College,Man,White,0,13,13
+188,University College,Man,Unreported,0,1,1
+189,College of Special Studies,Woman,Black or African American,0,1,1
+190,College of Special Studies,Woman,Hispanics of any race,2,1,3
+191,College of Special Studies,Woman,White,0,1,1
+192,College of Special Studies,Woman,Unreported,0,1,1
+193,College of Special Studies,Woman,Unreported,6,12,18
+194,College of Special Studies,Man,Black or African American,0,1,1
+195,College of Special Studies,Man,Two or more races,0,1,1
+196,College of Special Studies,Man,Unreported,3,31,34
