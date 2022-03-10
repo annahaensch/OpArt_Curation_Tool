@@ -174,14 +174,14 @@ def campus_building_map():
     plt.show()
 
 
-def beeswarm_building_gender(demo_cat, title, building_list = list(sc.hall_short_name_dict.keys())):
+def beeswarm_by_race_and_gender_buildings(building_list = list(sc.hall_short_name_dict.keys()),
+                                        title = ""):
     """ Returns beeswarm plot of counts by race and gender. 
 
     Input:
-        demo_cat: (string) "race" or "region" 
-        title: (string)
         building_list: (list) string building names.
-
+        title: (string)
+        
     Returns: 
         Beeswarm style horizontal bar chart of total counts.
     """
@@ -214,7 +214,7 @@ def beeswarm_building_gender(demo_cat, title, building_list = list(sc.hall_short
 
     fig, ax = plt.subplots(n,m, figsize = (14,18), sharex = True, sharey = True)
 
-    y_labels = list(student_df[demo_cat].value_counts().keys())
+    y_labels = list(student_df["race"].value_counts().keys())
 
     for i in range(len(building_list)):
 
@@ -227,12 +227,12 @@ def beeswarm_building_gender(demo_cat, title, building_list = list(sc.hall_short
         name = sc.hall_short_name_dict.get(building_list[i],building_list[i])
         
         df = pd.read_csv(my_file)
-        grouped_df = df.groupby(demo_cat)
+        grouped_df = df.groupby("race")
 
         count_df = pd.DataFrame(0, index = y_labels, 
             columns = ["Transgender","Woman","Man"])
         
-        for y in df[demo_cat].unique():
+        for y in df["race"].unique():
             gender_dict = grouped_df.get_group(y)["gender"].value_counts().to_dict()
 
             for k,v in gender_dict.items():
@@ -254,10 +254,10 @@ def beeswarm_building_gender(demo_cat, title, building_list = list(sc.hall_short
 
             y_ticks.append(y-1.5)
             y = y+.75
-        axs.set_title(name, fontsize = 25)
+        axs.set_title(name, fontsize = 15)
 
         axs.set_yticks(y_ticks)
-        axs.set_yticklabels(count_df.index, fontsize = 15)
+        axs.set_yticklabels(new_y_labels, fontsize = 12)
 
         
         axs.spines['right'].set_visible(False)
