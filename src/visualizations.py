@@ -325,3 +325,84 @@ def beeswarm_gender(demo_df, demo_cat, title = "Total Count by Race and Gender")
     plt.ylim(-0.5,y)
     plt.legend()
     plt.show()
+
+def beeswarm_both(student_df, art_df, demo_cat, title = "Total Count by Race and Gender"):
+    """ Returns beeswarm plot of counts by race and gender. 
+
+    Input:
+        demo_df: (dataframe) student_df or art_df
+        demo_cat: (string) "race" or "region" 
+
+    Returns: 
+        Beeswarm style horizontal bar chart of total counts.
+    """
+    hall_df, student_df, art_df = sc.load_data()
+    y_labels = list(student_df[demo_cat].value_counts().to_dict().keys())
+
+    y_label_dict = {
+    "American Indian or Alaska Native":"Amer. Indian or \n Alaska Native",
+    "Nat. Hawaiian or Other Pac Island":"Native Hawaiian or \n Other Pac. Island",
+    "Two or more races":"Two or More Races",
+    "Black or African American":"Black or African \n American",
+    "Hispanics of any race":"Hispanic of Any Race",
+    "Asian":"Asian",
+    "Unreported":"Unreported",
+    "White":"White"
+    }
+
+    new_y_labels = [y_label_dict[y] for y in y_labels]
+
+    color_dict = {"Woman":"#c85194",
+                      "Man":"#f1db54",
+                      "Transgender":COLOR_MAP["teal"]}
+
+    dfs = [art_df, student_df]
+    titles = ["Artists","Students"]
+    fig, ax = plt.subplots(1,2, figsize = (12,7), sharey = True)
+    for d in range(len(dfs)):
+        demo_df = dfs[d]
+
+        grouped_df = demo_df.groupby(demo_cat)
+        count_df = pd.DataFrame(0, index = y_labels, 
+            columns = ["Transgender","Woman","Man"])
+        
+        for y in demo_df[demo_cat].unique():
+            gender_dict = grouped_df.get_group(y)["gender"].value_counts().to_dict()
+
+            for k,v in gender_dict.items():
+                count_df.loc[y,k] = v
+
+        
+        y = 0
+        y_ticks = []
+        for idx in count_df.index:        
+            for col in ["Transgender","Woman","Man"]:
+
+                x_values = np.arange(count_df.loc[idx,col]) + np.random.normal(0,10,count_df.loc[idx,col])
+                y_values = np.full(len(x_values),float(y))
+                y_values = y_values + np.random.normal(0,.5,len(y_values)) # add gaussian jitter.
+
+                s_values = np.full(len(x_values),5) # set marker size.
+
+                ax[d].scatter(x_values, y_values, s = s_values, color = color_dict[col])
+                y = y+1
+
+            y_ticks.append(y-1.5)
+            y = y+.75
+
+        ax[d].scatter([],[], color = "#f1db54", s = [25], label = "Man")
+        ax[d].scatter([],[], color = "#c85194", s = [25], label = "Woman")
+        ax[d].scatter([],[], color = COLOR_MAP["teal"], s = [25], label = "Transgender or Non-Binary")
+
+        ax[d].set_xlabel("Count")
+        ax[d].set_title(titles[d], fontsize = 15)
+
+        ax[d].set_yticks(y_ticks)
+        ax[d].set_yticklabels(new_y_labels, fontsize = 12)
+
+        ax[d].spines['right'].set_visible(False)
+        ax[d].spines['top'].set_visible(False)
+
+    plt.ylim(-0.5,y)
+    plt.legend()
+    plt.show()
