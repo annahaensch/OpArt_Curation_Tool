@@ -20,7 +20,8 @@ import math
 COLOR_MAP = {"light_orange":"#E69F00",
              "light_blue":"#56B4E9",
              "teal":"#009E73",
-             "yellow":"#F0E442",
+             "yellow":"#f1db54",
+             "magenta":"#c85194",
              "dark_blue":"#0072B2",
              "dark_orange":"#D55E00",
              "pink":"#CC79A7",
@@ -187,8 +188,8 @@ def beeswarm_building_gender(demo_cat, title, building_list = list(sc.hall_short
     my_path = "../data/filled_buildings/"
     hall_df, student_df, art_df = sc.load_data()
 
-    color_dict = {"Woman":"#c85194",
-                  "Man":"#f1db54",
+    color_dict = {"Woman":COLOR_MAP["magenta"],
+                  "Man":COLOR_MAP["yellow"],
                   "Transgender":COLOR_MAP["teal"]}
 
     n = int(math.ceil(len(building_list) **(1/2)))
@@ -254,22 +255,20 @@ def beeswarm_building_gender(demo_cat, title, building_list = list(sc.hall_short
         axs = ax[0]
     else:
         axs = ax[0,0]
-    axs.scatter([],[], color = "#f1db54", s = [12], label = "Man")
-    axs.scatter([],[], color = "#c85194", s = [12], label = "Woman")
-    axs.scatter([],[], color = COLOR_MAP["teal"], s = [12], label = "Transgender or Non-Binary")
+    axs.scatter([],[], color = color_dict["Man"], s = [12], label = "Man")
+    axs.scatter([],[], color = color_dict["Woman"], s = [12], label = "Woman")
+    axs.scatter([],[], color = color_dict["Transgender"], s = [12], label = "Transgender or Non-Binary")
+    
     handles, labels = axs.get_legend_handles_labels()
-    #fig.legend(handles, labels, loc='lower right', bbox_to_anchor=[1,0])
-
-    #plt.suptitle(title, y  = .93, fontsize = 18)
     plt.show()
 
 
-def beeswarm_gender(demo_df, demo_cat, title = "Total Count by Race and Gender"):
+def beeswarm_by_race_and_gender_single(df, title = "Total Count by Race and Gender"):
     """ Returns beeswarm plot of counts by race and gender. 
 
     Input:
-        demo_df: (dataframe) student_df or art_df
-        demo_cat: (string) "race" or "region" 
+        df: (dataframe) student_df or art_df
+        title: (string) title of chart
 
     Returns: 
         Beeswarm style horizontal bar chart of total counts.
@@ -277,15 +276,15 @@ def beeswarm_gender(demo_df, demo_cat, title = "Total Count by Race and Gender")
     hall_df, student_df, art_df = sc.load_data()
     y_labels = list(student_df[demo_cat].value_counts().to_dict().keys())
 
-    color_dict = {"Woman":"#c85194",
-                  "Man":"#f1db54",
+    color_dict = {"Woman":COLOR_MAP["magenta"],
+                  "Man":COLOR_MAP["yellow"],
                   "Transgender":COLOR_MAP["teal"]}
 
     grouped_df = demo_df.groupby(demo_cat)
     count_df = pd.DataFrame(0, index = y_labels, 
         columns = ["Transgender","Woman","Man"])
     
-    for y in demo_df[demo_cat].unique():
+    for y in df["race"].unique():
         gender_dict = grouped_df.get_group(y)["gender"].value_counts().to_dict()
 
         for k,v in gender_dict.items():
@@ -309,10 +308,10 @@ def beeswarm_gender(demo_df, demo_cat, title = "Total Count by Race and Gender")
         y_ticks.append(y-1.5)
         y = y+.75
 
-    ax.scatter([],[], color = "#f1db54", s = [25], label = "Man")
-    ax.scatter([],[], color = "#c85194", s = [25], label = "Woman")
-    ax.scatter([],[], color = COLOR_MAP["teal"], s = [25], label = "Transgender or Non-Binary")
-
+    ax.scatter([],[], color = color_dict["Man"], s = [12], label = "Man")
+    ax.scatter([],[], color = color_dict["Woman"], s = [12], label = "Woman")
+    ax.scatter([],[], color = color_dict["Transgender"], s = [12], label = "Transgender or Non-Binary")
+    
     ax.set_xlabel("Count")
     ax.set_title(title, fontsize = 18)
 
@@ -353,10 +352,9 @@ def beeswarm_by_race_and_gender(titles = ["Artists","Students"]):
     # Update y_labels
     new_y_labels = [y_label_dict[y] for y in y_labels]
 
-    color_dict = {
-    			"Woman":"#c85194", # Magenta
-                "Man":"#f1db54", # Yellow
-                "Transgender":COLOR_MAP["teal"]}
+    color_dict = {"Woman":COLOR_MAP["magenta"],
+                  "Man":COLOR_MAP["yellow"],
+                  "Transgender":COLOR_MAP["teal"]}
 
     dfs = [art_df, student_df]
     fig, ax = plt.subplots(1,2, figsize = (12,7), sharey = True)
@@ -391,10 +389,10 @@ def beeswarm_by_race_and_gender(titles = ["Artists","Students"]):
             y_ticks.append(y-1.5)
             y = y+.75
 
-        ax[d].scatter([],[], color = "#f1db54", s = [25], label = "Man")
-        ax[d].scatter([],[], color = "#c85194", s = [25], label = "Woman")
-        ax[d].scatter([],[], color = COLOR_MAP["teal"], s = [25], label = "Transgender or Non-Binary")
-
+        ax[d].scatter([],[], color = color_dict["Man"], s = [12], label = "Man")
+    	ax[d].scatter([],[], color = color_dict["Woman"], s = [12], label = "Woman")
+    	ax[d].scatter([],[], color = color_dict["Transgender"], s = [12], label = "Transgender or Non-Binary")
+    
         ax[d].set_xlabel("Count")
         ax[d].set_title(titles[d], fontsize = 15)
 
