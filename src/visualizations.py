@@ -188,6 +188,23 @@ def beeswarm_building_gender(demo_cat, title, building_list = list(sc.hall_short
     my_path = "../data/filled_buildings/"
     hall_df, student_df, art_df = sc.load_data()
 
+    y_labels = list(student_df["race"].value_counts().to_dict().keys())
+    
+    # Fix labeling to fit tightly in vertical alignment.
+    y_label_dict = {
+    "American Indian or Alaska Native":"Amer. Indian or \n Alaska Native",
+    "Nat. Hawaiian or Other Pac Island":"Native Hawaiian or \n Other Pac. Island",
+    "Two or more races":"Two or More Races",
+    "Black or African American":"Black or African \n American",
+    "Hispanics of any race":"Hispanic of \n Any Race",
+    "Asian":"Asian",
+    "Unreported":"Unreported",
+    "White":"White"
+    }
+
+    # Update y_labels
+    new_y_labels = [y_label_dict[y] for y in y_labels]
+
     color_dict = {"Woman":COLOR_MAP["magenta"],
                   "Man":COLOR_MAP["yellow"],
                   "Transgender":COLOR_MAP["teal"]}
@@ -274,13 +291,29 @@ def beeswarm_by_race_and_gender_single(df, title = "Total Count by Race and Gend
         Beeswarm style horizontal bar chart of total counts.
     """
     hall_df, student_df, art_df = sc.load_data()
-    y_labels = list(student_df[demo_cat].value_counts().to_dict().keys())
+    
+    y_labels = list(df["race"].value_counts().to_dict().keys())
+    
+    # Fix labeling to fit tightly in vertical alignment.
+    y_label_dict = {
+    "American Indian or Alaska Native":"Amer. Indian or \n Alaska Native",
+    "Nat. Hawaiian or Other Pac Island":"Native Hawaiian or \n Other Pac. Island",
+    "Two or more races":"Two or More Races",
+    "Black or African American":"Black or African \n American",
+    "Hispanics of any race":"Hispanic of \n Any Race",
+    "Asian":"Asian",
+    "Unreported":"Unreported",
+    "White":"White"
+    }
+
+    # Update y_labels
+    new_y_labels = [y_label_dict[y] for y in y_labels]
 
     color_dict = {"Woman":COLOR_MAP["magenta"],
                   "Man":COLOR_MAP["yellow"],
                   "Transgender":COLOR_MAP["teal"]}
 
-    grouped_df = demo_df.groupby(demo_cat)
+    grouped_df = df.groupby("race")
     count_df = pd.DataFrame(0, index = y_labels, 
         columns = ["Transgender","Woman","Man"])
     
@@ -313,10 +346,10 @@ def beeswarm_by_race_and_gender_single(df, title = "Total Count by Race and Gend
     ax.scatter([],[], color = color_dict["Transgender"], s = [12], label = "Transgender or Non-Binary")
     
     ax.set_xlabel("Count")
-    ax.set_title(title, fontsize = 18)
+    ax.set_title(title, fontsize = 15)
 
     ax.set_yticks(y_ticks)
-    ax.set_yticklabels(count_df.index, fontsize = 15)
+    ax.set_yticklabels(new_y_labels, fontsize = 12)
 
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
@@ -390,8 +423,8 @@ def beeswarm_by_race_and_gender(titles = ["Artists","Students"]):
             y = y+.75
 
         ax[d].scatter([],[], color = color_dict["Man"], s = [12], label = "Man")
-    	ax[d].scatter([],[], color = color_dict["Woman"], s = [12], label = "Woman")
-    	ax[d].scatter([],[], color = color_dict["Transgender"], s = [12], label = "Transgender or Non-Binary")
+        ax[d].scatter([],[], color = color_dict["Woman"], s = [12], label = "Woman")
+        ax[d].scatter([],[], color = color_dict["Transgender"], s = [12], label = "Transgender or Non-Binary")
     
         ax[d].set_xlabel("Count")
         ax[d].set_title(titles[d], fontsize = 15)
