@@ -326,47 +326,48 @@ def beeswarm_gender(demo_df, demo_cat, title = "Total Count by Race and Gender")
     plt.legend()
     plt.show()
 
-def beeswarm_both(student_df, art_df, demo_cat, title = "Total Count by Race and Gender"):
+def beeswarm_by_race_and_gender(titles = ["Artists","Students"]):
     """ Returns beeswarm plot of counts by race and gender. 
 
     Input:
-        demo_df: (dataframe) student_df or art_df
-        demo_cat: (string) "race" or "region" 
+        titles: (list) list of string subtitles
 
     Returns: 
         Beeswarm style horizontal bar chart of total counts.
     """
     hall_df, student_df, art_df = sc.load_data()
-    y_labels = list(student_df[demo_cat].value_counts().to_dict().keys())
+    y_labels = list(student_df["race"].value_counts().to_dict().keys())
 
+    # Fix labeling to fit tightly in vertical alignment.
     y_label_dict = {
     "American Indian or Alaska Native":"Amer. Indian or \n Alaska Native",
     "Nat. Hawaiian or Other Pac Island":"Native Hawaiian or \n Other Pac. Island",
     "Two or more races":"Two or More Races",
     "Black or African American":"Black or African \n American",
-    "Hispanics of any race":"Hispanic of Any Race",
+    "Hispanics of any race":"Hispanic of \n Any Race",
     "Asian":"Asian",
     "Unreported":"Unreported",
     "White":"White"
     }
 
+    # Update y_labels
     new_y_labels = [y_label_dict[y] for y in y_labels]
 
-    color_dict = {"Woman":"#c85194",
-                      "Man":"#f1db54",
-                      "Transgender":COLOR_MAP["teal"]}
+    color_dict = {
+    			"Woman":"#c85194", # Magenta
+                "Man":"#f1db54", # Yellow
+                "Transgender":COLOR_MAP["teal"]}
 
     dfs = [art_df, student_df]
-    titles = ["Artists","Students"]
     fig, ax = plt.subplots(1,2, figsize = (12,7), sharey = True)
     for d in range(len(dfs)):
-        demo_df = dfs[d]
+        df = dfs[d]
 
-        grouped_df = demo_df.groupby(demo_cat)
+        grouped_df = df.groupby("race")
         count_df = pd.DataFrame(0, index = y_labels, 
             columns = ["Transgender","Woman","Man"])
         
-        for y in demo_df[demo_cat].unique():
+        for y in df["race"].unique():
             gender_dict = grouped_df.get_group(y)["gender"].value_counts().to_dict()
 
             for k,v in gender_dict.items():
