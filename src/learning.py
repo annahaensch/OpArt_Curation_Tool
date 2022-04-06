@@ -86,9 +86,12 @@ def get_building_capacity_df():
     """
     Return dataframe of art capacity by building.
     """
-    art_df = pd.read_csv(
-        "../data/2022_03_04_art_data_cleaned.csv", 
+    try:
+        art_df = pd.read_csv("../data/2022_03_04_art_data_cleaned.csv", 
         index_col = 0)
+    except:
+        art_df = process_art_dataframe()
+        
 
     # Remove art in storage.
     art_df = art_df[art_df["loc"] != "crozier_fine_arts"].copy()
@@ -301,7 +304,7 @@ def compute_cost_matrix(art_df,
     return cost_df
 
 
-def learn_optimal_assignment(cost_df, building_capacity_df, art_capacity_df, lam):
+def learn_optimal_assignment(cost_df, building_capacity_df, art_capacity_df, current_assignment, lam, tau,init):
     """ Return n_buildings x n_artworkks assignment array
     """
     C = cost_df.values
@@ -314,10 +317,33 @@ def learn_optimal_assignment(cost_df, building_capacity_df, art_capacity_df, lam
     t = np.arange(1,num_arts + 1)
 
     ones_vector= np.ones((num_buildings,1))
-    lam = 1
 
     # Initialize assignment array.
-    P = np.eye(num_buildings,num_arts)
+    if init==1:
+        P = np.eye(num_buildings,num_arts)
+    elif init==2:
+        P = 1/(num_arts)*np.divide(ones(num_buildings,num_arts),building_capacity)
+    elif init==3:
+        P = current_assignment
+    else:
+        P = np.random.randn(num_buildings,num_arts)
+        # Projection
+        for i in range(num_buildings):
+            v = P[i,:]
+            if np.all(v>0):
+                v = v/np.sum(v)
+                P[i]=v * building_capacity[i]
+            else:
+                mu = v[np.argsort(-v)]
+                tmp = np.divide(np.cumsum(mu)-building_capacity[i],t)
+                idx_negative = np.argwhere(mu-tmp<=0)
+                try:
+                    idx_neg = idx_negative[0]
+                    idx_neg = idx_neg.item()
+                except:
+                    idx_neg = -1
+                theta = (np.sum(mu[0:idx_neg])-building_capacity[i])/(idx_neg)
+                P[i,:] =  np.maximum(P[i,:]-theta,0)
 
     for _ in range(1000):
 
@@ -325,7 +351,7 @@ def learn_optimal_assignment(cost_df, building_capacity_df, art_capacity_df, lam
         term2b = np.matmul(ones_vector,np.matmul(np.transpose(ones_vector),P
                           )-np.transpose(art_capacity))
 
-        P = P - dt*C - lam *dt*(term2b)
+        P = P - dt*C - lam *dt*(term2b)- tau*dt*(P-current_assignment)
 
         # Projection
         for i in range(num_buildings):

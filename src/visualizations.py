@@ -9,8 +9,8 @@ import sys
 sys.path.append('..')
 
 import src as sc
-import geopandas
-import contextily as ctx  
+#import geopandas
+#import contextily as ctx  
 import json
 
 from os import listdir

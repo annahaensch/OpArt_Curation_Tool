@@ -1,7 +1,7 @@
 # Preprocessing of Data
 import pandas as pd
 import numpy as np
-import pdfplumber
+#import pdfplumber
 
 import logging
 logging.basicConfig(level=logging.WARNING)
@@ -382,7 +382,7 @@ def process_art_dataframe():
                "race":mappings[1],
                "region":mappings[2]}
 
-    art_df = pd.read_excel("../data/PC_Artist_Subject_Donor_Data.xlsx")
+    art_df = pd.read_excel("../data/TUAG_Artist_Subject_Donor_Data.xlsx")
     art_df.fillna("Unknown", inplace = True)
     art_df["loc"] = [hall_tuag_name_dict[a] for a in art_df["Current Location (Campus and Building)"]]
     art_df.columns = [c.lower().strip(" ").replace(" ","_").replace("__","_") for c in art_df.columns]

@@ -21,7 +21,7 @@ import pandas as pd
 import numpy as np
 import json
 import logging
-
+import os
 from bs4 import BeautifulSoup
 import requests
 
@@ -208,7 +208,13 @@ def get_hall_by_school_table():
     """
     Return num_halls x num_schools one-hot table.
     """
-    student_df = pd.read_csv("../data/2022_03_04_student_data_cleaned.csv", index_col = 0)
+    student_df = get_student_enrollment_data()
+    #try:
+    #    student_df = pd.read_csv("../data/2022_03_04_student_data_cleaned.csv", index_col = 0)
+    #except:
+    #    process_student_dataframe()
+    #    student_df = pd.read_csv("../data/2022_03_04_student_data_cleaned.csv", index_col = 0)
+
     schools = list(student_df["school"].unique())
 
     with open("../data/hall_dict.json") as json_file:
@@ -332,6 +338,9 @@ def fill_residence_halls(student_df, hall_df):
 
 
 def fill_buildings(student_df, hall_df):
+    exists  = os.path.exists("../data/filled_buildings")
+    if exists  ==False:
+        os.mkdir("../data/filled_buildings")
 
     fill_residence_halls(student_df = student_df, 
                         hall_df = hall_df)
