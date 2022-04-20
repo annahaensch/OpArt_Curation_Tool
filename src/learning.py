@@ -293,7 +293,6 @@ def compute_cost_matrix(art_df,
         denominator = stu_art_norm * art_likelihood
         denominator = denominator.reshape(denominator.shape[0],-1,denominator.shape[1])
 
-
         art_prob = (alpha / beta) * np.sum((numerator / denominator), axis = 0)
         art_prob = np.exp(art_prob - logsumexp(art_prob))
 
@@ -313,7 +312,7 @@ def learn_optimal_assignment(cost_df, building_capacity_df, art_capacity_df, cur
     building_capacity = building_capacity_df.values
     art_capacity = art_capacity_df["capacity"].values
 
-    dt = 0.001 #step size
+    dt = 0.5 * (1/((lam * num_buildings) + tau)) #step size
     t = np.arange(1,num_arts + 1)
 
     ones_vector= np.ones((num_buildings,1))
@@ -322,7 +321,7 @@ def learn_optimal_assignment(cost_df, building_capacity_df, art_capacity_df, cur
     if init==1:
         P = np.eye(num_buildings,num_arts)
     elif init==2:
-        P = 1/(num_arts)*np.divide(ones(num_buildings,num_arts),building_capacity)
+        P = 1/(num_arts)*np.divide(np.ones((num_buildings,num_arts)),building_capacity)
     elif init==3:
         P = current_assignment
     else:
@@ -335,18 +334,12 @@ def learn_optimal_assignment(cost_df, building_capacity_df, art_capacity_df, cur
                 P[i]=v * building_capacity[i]
             else:
                 mu = v[np.argsort(-v)]
-                tmp = np.divide(np.cumsum(mu)-building_capacity[i],t)
-                idx_negative = np.argwhere(mu-tmp<=0)
-                try:
-                    idx_neg = idx_negative[0]
-                    idx_neg = idx_neg.item()
-                except:
-                    idx_neg = -1
-                theta = (np.sum(mu[0:idx_neg])-building_capacity[i])/(idx_neg)
+                tmp = (np.cumsum(mu) - building_capacity[i])/t
+                K = np.argwhere(tmp < mu)[-1][0] + 1
+                theta = (np.sum(mu[:K]) - building_capacity[i]) / (K)
                 P[i,:] =  np.maximum(P[i,:]-theta,0)
 
     for _ in range(1000):
-
         # Gradient descent.
         term2b = np.matmul(ones_vector,np.matmul(np.transpose(ones_vector),P
                           )-np.transpose(art_capacity))
@@ -361,14 +354,9 @@ def learn_optimal_assignment(cost_df, building_capacity_df, art_capacity_df, cur
                 P[i]=v * building_capacity[i]
             else:
                 mu = v[np.argsort(-v)]
-                tmp = np.divide(np.cumsum(mu)-building_capacity[i],t)
-                idx_negative = np.argwhere(mu-tmp<=0)
-                try:
-                    idx_neg = idx_negative[0]
-                    idx_neg = idx_neg.item()
-                except:
-                    idx_neg = -1
-                theta = (np.sum(mu[0:idx_neg])-building_capacity[i])/(idx_neg)
+                tmp = (np.cumsum(mu) - building_capacity[i])/t
+                K = np.argwhere(tmp < mu)[-1][0] + 1
+                theta = (np.sum(mu[:K]) - building_capacity[i]) / (K)
                 P[i,:] =  np.maximum(P[i,:]-theta,0)
 
     return pd.DataFrame(P, index = cost_df.index,
