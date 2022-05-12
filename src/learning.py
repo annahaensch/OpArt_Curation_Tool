@@ -325,27 +325,29 @@ def learn_optimal_assignment(cost_df, building_capacity_df, art_capacity_df, cur
     elif init==3:
         P = current_assignment
     else:
-        P = np.random.randn(num_buildings,num_arts)
+        P = sample_general_simplex(num_buildings,num_arts,building_capacity)
+        #P = np.random.randn(num_buildings,num_arts)
         # Projection
-        for i in range(num_buildings):
-            v = P[i,:]
-            if np.all(v>0):
-                v = v/np.sum(v)
-                P[i]=v * building_capacity[i]
-            else:
-                mu = v[np.argsort(-v)]
-                tmp = (np.cumsum(mu) - building_capacity[i])/t
-                K = np.argwhere(tmp < mu)[-1][0] + 1
-                theta = (np.sum(mu[:K]) - building_capacity[i]) / (K)
-                P[i,:] =  np.maximum(P[i,:]-theta,0)
-
-    for _ in range(1000):
+        #for i in range(num_buildings):
+        #    v = P[i,:]
+        #    if np.all(v>0):
+        #        v = v/np.sum(v)
+        #        P[i]=v * building_capacity[i]
+        #    else:
+        #        mu = v[np.argsort(-v)]
+        #        tmp = (np.cumsum(mu) - building_capacity[i])/t
+        #        K = np.argwhere(tmp < mu)[-1][0] + 1
+        #        theta = (np.sum(mu[:K]) - building_capacity[i]) / (K)
+        #        P[i,:] =  np.maximum(P[i,:]-theta,0)
+    energy = np.zeros((10,1))
+    print(energy[2])
+    for k in range(10):
+        print(k)
         # Gradient descent.
         term2b = np.matmul(ones_vector,np.matmul(np.transpose(ones_vector),P
                           )-np.transpose(art_capacity))
 
         P = P - dt*C - lam *dt*(term2b)- tau*dt*(P-current_assignment)
-
         # Projection
         for i in range(num_buildings):
             v = P[i,:]
@@ -358,6 +360,12 @@ def learn_optimal_assignment(cost_df, building_capacity_df, art_capacity_df, cur
                 K = np.argwhere(tmp < mu)[-1][0] + 1
                 theta = (np.sum(mu[:K]) - building_capacity[i]) / (K)
                 P[i,:] =  np.maximum(P[i,:]-theta,0)
+        # Compute objective value
+        energy1 = np.trace(np.matmul(np.transpose(C),P))
+        energy2 = 0.5*lam*np.linalg.norm(np.sum(P,axis=0)-art_capacity)**2
+        energy3 = 0.5*tau*np.linalg.norm(P-current_assignment)**2
+        energy[k] = energy1+energy2+energy3
+        print(energy[k])
 
     return pd.DataFrame(P, index = cost_df.index,
                    columns = art_capacity_df["string"].values)
@@ -437,6 +445,21 @@ def validate_assignment(assignment_df):
                 -1,1), index = val_df.index, columns = val_df.columns)
     
     return val_df[["Optimized","Baseline"]]
+
+# This script samples a matrix P of size N by M where P>=0 and P1 = h
+# In other words, each row of P, denoted by P_i lies in the general simplex
+# where (P_i)_j>=0 and sum_{j=1}^{M} (P_i) = h_i
+def sample_general_simplex(N,M,h):
+    P = np.zeros((N,M))
+    for i in range(N):
+        init_sum = 0
+        for j in range(M-1):
+            phi = np.random.uniform(0,1)
+            P[i,j] =(1-init_sum)*(1-np.power(phi,1/(M-j-1))) 
+            init_sum = init_sum+ P[i,j]
+        P[i,M-1]  = 1- init_sum
+        P[i,:] = np.multiply(P[i,:],h[i])
+    return P
 
 def baseline_average_value(category = "gender", in_group = "Man"):
     # Load data
