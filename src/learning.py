@@ -212,7 +212,6 @@ def compute_cost_matrix(art_df,
     folder_files = set(os.listdir(my_path))
     assert set(hall_files).issubset(folder_files)
     
-    print("test 1")
     # Load mappings
     mappings = get_mapping_dicts()
     mapping_dict = {"gender":mappings[0],
@@ -241,10 +240,8 @@ def compute_cost_matrix(art_df,
     # Initialize empty dataframe
     cost_df = pd.DataFrame(index = hall_df.index,
                           columns = list(new_art_df.index))
-    print("test 2")
     for i in range(len(hall_files)):
         name = hall_files[i].split("_students.csv")[0]
-        print(name)
         df = pd.read_csv(ROOT + "/data/filled_buildings/{}".format(
             hall_files[i]), index_col = 0)
         df.reset_index(drop = True, inplace = True)
