@@ -65,8 +65,6 @@ def get_quantized_student_data(student_df, gender_map, race_map, region_map):
     Output:
         Dictionary of quantized student enumeration values. 
     """ 
-    hall_df, student_df, art_df = load_data()
-
     S = student_df.shape[0]
 
     gender_quant = {g:student_df["gender_enum"].value_counts().to_dict().get(g,
@@ -90,7 +88,6 @@ def get_quantized_art_data(art_df, gender_map, race_map, region_map):
     Output: 
         Dictionary of quantized art enumeration values.
     """
-    hall_df, student_df, art_df = load_data()
     A = art_df.shape[0]
 
     gender_quant = {g:art_df["gender_enum"].value_counts().to_dict().get(g,0)/A 
