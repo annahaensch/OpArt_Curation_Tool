@@ -427,7 +427,7 @@ def learn_optimal_assignment(hall_df, art_df, cost_df, lam, tau,init, iterations
     else:
         P = sample_general_simplex(n_rows = num_buildings,
                                 n_columns = num_arts,
-                                capacity = building_capacity)
+                                 capacity = building_capacity)
     energy = np.zeros((iterations,1))
     for k in range(iterations):
         # Gradient descent.
@@ -721,7 +721,6 @@ def run_art_assignment(beta, lam, tau, init, iterations):
     # Compute assignment matrix
     assignment_df = learn_optimal_assignment(
                             hall_df = hall_df, 
-                            student_df = student_df, 
                             art_df = art_df,
                             cost_df = cost_df, 
                             lam = norm_lam_factor*lam, 
