@@ -22,13 +22,12 @@ import numpy as np
 import json
 import logging
 import os
+import sys
 from bs4 import BeautifulSoup
 import requests
 
-import os
-ROOT = os.popen("git rev-parse --show-toplevel").read().split("\n")[0]
 
-import sys
+ROOT = os.popen("git rev-parse --show-toplevel").read().split("\n")[0]
 sys.path.append(ROOT)
 
 import src as sc
