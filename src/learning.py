@@ -12,8 +12,12 @@ from scipy.special import logsumexp
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
+
+import os
+ROOT = os.popen("git rev-parse --show-toplevel").read().split("\n")[0]
 
 import sys
 sys.path.append('..')
@@ -24,7 +28,7 @@ def get_mapping_dicts():
     """
     Get enum to name mappings for gender, race, and region.
     """
-    with open("../data/mappings.json","r") as file:
+    with open(ROOT + "/data/mappings.json","r") as file:
         mapping_dict = json.load(file)
 
         gender_map = mapping_dict["gender_mapping"]
@@ -39,7 +43,7 @@ def load_data():
     Load student, art, and building data.
     """
     # Gather building data
-    hall_df = pd.read_csv("../data/hall_df.csv", index_col = 0)
+    hall_df = pd.read_csv(ROOT + "/data/hall_df.csv", index_col = 0)
     hall_df.sort_index(inplace = True)
 
     # Drop Capen House. 
@@ -87,7 +91,7 @@ def get_building_capacity_df():
     Return dataframe of art capacity by building.
     """
     try:
-        art_df = pd.read_csv("../data/2022_03_04_art_data_cleaned.csv", 
+        art_df = pd.read_csv(ROOT + "/data/2022_03_04_art_data_cleaned.csv", 
         index_col = 0)
     except:
         art_df = process_art_dataframe()
@@ -189,7 +193,7 @@ def compute_cost_matrix(art_df,
     new_art_df.reset_index(drop = True, inplace = True)
     
     # Check that the filled building data is available.
-    my_path = "../data/filled_buildings/"
+    my_path = ROOT + "/data/filled_buildings/"
     hall_files = ["{}_students.csv".format(f) for f in hall_df.index]
     hall_files.sort()
                   
@@ -227,7 +231,7 @@ def compute_cost_matrix(art_df,
 
     for i in range(len(hall_files)):
         name = hall_files[i].split("_students.csv")[0]
-        df = pd.read_csv("../data/filled_buildings/{}".format(
+        df = pd.read_csv(ROOT + "/data/filled_buildings/{}".format(
             hall_files[i]), index_col = 0)
         df.reset_index(drop = True, inplace = True)
 
@@ -322,7 +326,7 @@ def get_normalizing_constants():
     art_capacity = art_capacity_df["capacity"].values
 
     # Get current assignment
-    current_assignment_df = pd.read_csv("current_assignment_df.csv", index_col = 0)
+    current_assignment_df = pd.read_csv(ROOT + "/data/current_assignment_df.csv", index_col = 0)
     current_assignment = current_assignment_df.values
 
     beta_values = np.array([.01,1,10])
@@ -407,7 +411,7 @@ def learn_optimal_assignment(cost_df, lam, tau,init):
     num_arts = art_capacity_df.shape[0]
 
     # Get current assignment
-    current_assignment_df = pd.read_csv("current_assignment_df.csv", index_col = 0)
+    current_assignment_df = pd.read_csv(ROOT + "/data/current_assignment_df.csv", index_col = 0)
     current_assignment = current_assignment_df.values
 
     dt = 0.5 * (1/((lam * num_buildings) + tau)) #step size
@@ -480,7 +484,7 @@ def validate_assignment(assignment_df):
         race_index, gender_index], columns = ["Optimized","Baseline","Total"])
 
     # Get current art locations and process dataframe.
-    art_loc_df = pd.read_csv("../data/2021_05_07_Artist_Subject_Donor_Data_v3.csv"
+    art_loc_df = pd.read_csv(ROOT + "/data/2021_05_07_Artist_Subject_Donor_Data_v3.csv"
                                             )[["OBJECTID","HOMELOC"]]
     art_df_with_loc = art_df.merge(art_loc_df, 
                                     left_on = "objectid",
@@ -495,7 +499,7 @@ def validate_assignment(assignment_df):
     
     # Iterative over buildings in question.
     for h in assignment_df.index:
-        building_df = pd.read_csv("../data/filled_buildings/{}_students.csv".format(h))
+        building_df = pd.read_csv(ROOT + "/data/filled_buildings/{}_students.csv".format(h))
         
         art_slice_df = art_df_with_loc[art_df_with_loc["loc"] == h]
         
@@ -551,7 +555,7 @@ def baseline_average_value(category = "gender", in_group = "Man"):
     in_index = []
     out_index = []
     for h in hall_df.index:
-        df_h = pd.read_csv("../data/filled_buildings/{}_students.csv".format(h), index_col = 0)
+        df_h = pd.read_csv(ROOT + "/data/filled_buildings/{}_students.csv".format(h), index_col = 0)
         # set value to 1 if student goes through building.
         df.loc[df_h["student_id"].values,h] = 1
     
@@ -588,7 +592,7 @@ def optimized_average_value(assignment_df, category = "gender", in_group = "Man"
     in_index = []
     out_index = []
     for h in hall_df.index:
-        df_h = pd.read_csv("../data/filled_buildings/{}_students.csv".format(h), index_col = 0)
+        df_h = pd.read_csv(ROOT + "/data/filled_buildings/{}_students.csv".format(h), index_col = 0)
         # set value to 1 if student goes through building.
         df.loc[df_h["student_id"].values,h] = 1
     
@@ -618,75 +622,87 @@ def optimized_average_value(assignment_df, category = "gender", in_group = "Man"
     return in_expected, out_expected
 
 
-def run_art_assignment(method, alpha, lam):
-    
+def run_art_assignment(beta, lam, tau, init):
+    """
+    Input: 
+        beta: (float) beta factor determines weight of the diversity 
+            objectives in the optimization (i.e. "term 1").
+        lam: (float) lambda factor determines weight of artwork capacity 
+            constraints in optimization (i.e. "term 2").
+        tau: (float) tau factor determines weight of preference for current 
+            assignment in optimization (i.e. "term 3").
+        init: (int) one of the following: 
+                1 - identity matrix initialization
+                2 - uniform initialization
+                3 - current assignment initialization
+                4 - random permutation initialization
+    Returns:
+        num_buildings x num_arts assignment dataframe where the entry in row n 
+        and column m is the copies of artwork m to by hung in building n.
+    """
+
     # Load mappings
     gender_map, race_map, region_map = get_mapping_dicts()
 
     # Load data
     hall_df, student_df, art_df = load_data()
 
-    # Get quantized student data.
-    gender_quant_s, race_quant_s, region_quant_s = get_quantized_student_data(    
-                                                        student_df,
-                                                        gender_map, 
-                                                        race_map, 
-                                                        region_map)
+    # Compute building capacity
+    building_capacity_df = sc.get_building_capacity_df()
+    building_capacity =  building_capacity_df.values
 
-    # Get quantized  art data.
-    gender_quant_a, race_quant_a, region_quant_a = get_quantized_art_data(    
-                                                        art_df,
-                                                        gender_map, 
-                                                        race_map, 
-                                                        region_map)
+    # Compute art capacity
+    art_capacity_df = sc.get_art_capacity_with_downsampling(art_df,
+                    categories = ["gender","race"])
+    art_capacity = art_capacity_df["capacity"].values
 
-    # Get building capacity column vector.
-    building_capacity = get_building_capacity_df().values
-
-    logging.info("\n Computing cost matrix...")
+    logging.info("Computing cost matrix...")
+    logging.info(f"beta = {beta}")
 
     # Compute full n_buildings x n_artworks cost matrix.
     cost_df = compute_cost_matrix(art_df = art_df, 
-                                        hall_df = hall_df, 
-                                        gender_quant_s = gender_quant_s, 
-                                        race_quant_s = race_quant_s, 
-                                        region_quant_s = region_quant_s, 
-                                        gender_quant_a = gender_quant_a, 
-                                        race_quant_a = race_quant_a, 
-                                        region_quant_a = region_quant_a, 
-                                        alpha = -1)
+                                        hall_df = hall_df,
+                                        categories = ["gender","race"],
+                                        alpha = -1,
+                                        beta = beta)
 
-    if method == "assign_with_downsampling":
-        art_capacity_df = get_art_capacity_with_downsampling(art_df)
+    # Reduce cost df to remove duplicate columns.
+    cost_df = cost_df.rename(columns = {art_capacity_df.loc[i,"tuple"
+        ]:art_capacity_df.loc[i,"string"] for i in art_capacity_df.index})
 
-        # Reduce cost df to remove duplicate columns.
-        art_capacity = art_capacity_df["capacity"].values.reshape(-1,1)
+    # Compute normalizing constants for lambda and tau
+    norm_lam_factor, norm_tau_factor = get_normalizing_constants()
 
-        cost_df = cost_df.loc[:,art_capacity_df["original_index"].values]
-        
-        logging.info("\n Learning optimal assignment...")
+    logging.info("Computing assignment matrix...")
+    logging.info(f"lambda = {lam}, tau = {tau}, init = {init}")
 
-        P = learn_optimal_assignment(cost_df, 
-                                    building_capacity, 
-                                    art_capacity, 
-                                    lam)
-        
-        # Check that assignment numbers are sufficiently close to building capacity.
-        assert np.all(np.sum(P, axis = 1) - building_capacity.reshape(
-                                                                1,-1) < 1e-10)
+    # Compute assignment matrix
+    assignment_df = learn_optimal_assignment(cost_df, 
+                             lam = norm_lam_factor*lam, 
+                             tau=norm_tau_factor*tau,
+                             init = init
+                             ) 
 
-        # Convert the assignment array to a dataframe for readability.
-        assignment_df = pd.DataFrame(P, index = cost_df.index,
-                          columns = art_capacity_df["tuples"].values)
+    # Check that assignment numbers are sufficiently close to building capacity.
+    assert np.all(assignment_df.sum(axis = 1).values.reshape(-1,1) - 
+                                building_capacity_df.values.reshape(-1,1) < 1e-08)
 
-        return assignment_df
+    d = datetime.now().strftime("%Y%m%d%H%M%S")
+    suffix = f"{beta}_{lam}_{tau}_{init}_{d}.csv"
+    assignment_df.to_csv(f"{ROOT}/output/assignment_df_{suffix}")
+    cost_df.to_csv(f"{ROOT}/output/cost_df_{suffix}")
 
-    else:
-        raise NotImplementedError("This is in progress...")
+    logging.info(f"Cost matrix printed to: {ROOT}/output/cost_df_{suffix}")
+    logging.info(f"Assignment matrix printed to: {ROOT}/output/assignment_df_{suffix}")
+
+    return assignment_df
+
 
 if __name__ == "__main__":
 
-    method = sys.argv[1]
-    alpha = sys.argv[2]
-    lam = sys.argv[3]
-    run_art_assignment(method, alpha, lam)
+    beta = int(sys.argv[1])
+    lam = int(sys.argv[2])
+    tau = int(sys.argv[3])
+    init = int(sys.argv[4])
+
+    run_art_assignment(beta, lam, tau, init)
