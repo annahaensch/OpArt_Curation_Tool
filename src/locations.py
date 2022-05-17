@@ -2,9 +2,9 @@
 The underlying student gender and race data was obtained from the public 
 Fall 2020 Enrollment Calculator (https://provost.tufts.edu/institutionalresearch/enrollment/).  
 Relevant data was downloaded, manually entered into an Excel spreadsheet and saved as csv:
-* `../Data/2021_10_19_EC_school_gender_race.pdf`
-* `../Data/2021_10_19_EC_school_gender_race.ods`
-* `../Data/2021_10_19_EC_school_gender_race.csv`
+* `../data/2021_10_19_EC_school_gender_race.pdf`
+* `../data/2021_10_19_EC_school_gender_race.ods`
+* `../data/2021_10_19_EC_school_gender_race.csv`
 
 
 The underlying student region data was obtained from the 
@@ -13,9 +13,9 @@ Fall 2020 Enrollment Calculator With Region (https://tableau.uit.tufts.edu/#/sit
 -- link might be password protected, but AH has access).Relevant data was 
 downloaded, manually entered into an Excel spreadsheet and saved as csv:
 
-* `../Data/2021_10_04_EC_school_gender_region.pdf`
-* `../Data/2021_10_04_EC_school_gender_region.ods`
-* `../Data/2021_10_04_EC_school_gender_region.csv`
+* `../data/2021_10_04_EC_school_gender_region.pdf`
+* `../data/2021_10_04_EC_school_gender_region.ods`
+* `../data/2021_10_04_EC_school_gender_region.csv`
 """
 import pandas as pd
 import numpy as np
@@ -24,6 +24,9 @@ import logging
 import os
 from bs4 import BeautifulSoup
 import requests
+
+import os
+ROOT = os.popen("git rev-parse --show-toplevel").read().split("\n")[0]
 
 import sys
 sys.path.append('..')
@@ -200,7 +203,7 @@ def print_hall_dictionary_to_json():
     # Fix Lane Hall
     hall_dict["lane_hall"]["hall_type"] = "Academic Building"
 
-    with open("../data/hall_dict.json", "w") as outfile: 
+    with open(ROOT + "/data/hall_dict.json", "w") as outfile: 
         json.dump(hall_dict, outfile)
 
 
@@ -209,15 +212,9 @@ def get_hall_by_school_table():
     Return num_halls x num_schools one-hot table.
     """
     student_df = get_student_enrollment_data()
-    #try:
-    #    student_df = pd.read_csv("../data/2022_03_04_student_data_cleaned.csv", index_col = 0)
-    #except:
-    #    process_student_dataframe()
-    #    student_df = pd.read_csv("../data/2022_03_04_student_data_cleaned.csv", index_col = 0)
-
     schools = list(student_df["school"].unique())
 
-    with open("../data/hall_dict.json") as json_file:
+    with open(ROOT + "/data/hall_dict.json") as json_file:
         hall_dict = json.load(json_file)
 
     loc_df = pd.DataFrame(columns = ["name","type"])
@@ -242,14 +239,14 @@ def get_hall_by_school_table():
 
         hall_df.loc[h,depts] = 1
 
-    hall_df.to_csv("../data/hall_df.csv")
+    hall_df.to_csv(ROOT + "/data/hall_df.csv")
 
     return hall_df
 
 
 def get_student_enrollment_data():
     #df_total = sc.process_student_dataframe()
-    df_total = pd.read_csv("../data/Tufts_2021_Fall_Enrollment_Calculator_Data.csv", index_col = 0)
+    df_total = pd.read_csv(ROOT + "/data/Tufts_2021_Fall_Enrollment_Calculator_Data.csv", index_col = 0)
     
     df_students = pd.DataFrame()
     for i in df_total.index:
@@ -270,7 +267,7 @@ def get_student_enrollment_data():
     df_students["gender_enum"] = [gender_map[g] for g in df_students["gender"]]
     df_students["race_enum"] = [race_map[g] for g in df_students["race"]]
 
-    df_students.to_csv("../data/student_df.csv")
+    df_students.to_csv(ROOT + "/data/student_df.csv")
 
     return df_students
 
@@ -311,10 +308,12 @@ def fill_residence_halls(student_df, hall_df):
     for k,v in res_hall_dict.items():
         
         if k == "capen_house":
-            idx1 = np.random.choice(remainder_df[remainder_df["race"].isin(["Black or African American",
-                                                    "Two or more races", 
-                                                    "Hispanics of any races"])].index,5)
-            idx2 = np.random.choice(remainder_df[remainder_df["race"].isin(["Black or African American"])].index,v-5)
+            idx1 = np.random.choice(remainder_df[remainder_df["race"].isin([
+                                    "Black or African American",
+                                    "Two or more races", 
+                                    "Hispanics of any races"])].index,5)
+            idx2 = np.random.choice(remainder_df[remainder_df["race"].isin([
+                            "Black or African American"])].index,v-5)
             idx = list(idx1) + list(idx2)
         
         else:
@@ -331,34 +330,35 @@ def fill_residence_halls(student_df, hall_df):
             hall_df = hall_df)
 
         df = pd.concat([df,df_academic])
-        df.to_csv("../data/filled_buildings/{}_students.csv".format(k))
+        df.to_csv(ROOT + "/data/filled_buildings/{}_students.csv".format(k))
         
 
     return df
 
 
 def fill_buildings(student_df, hall_df):
-    exists  = os.path.exists("../data/filled_buildings")
+    exists  = os.path.exists(ROOT + "/data/filled_buildings")
     if exists  ==False:
-        os.mkdir("../data/filled_buildings")
+        os.mkdir(ROOT + "/data/filled_buildings")
 
+    logging.info("\n Filling residence halls...")
     fill_residence_halls(student_df = student_df, 
                         hall_df = hall_df)
     
+    logging.info("\n Filling remaining buildings...")
     for building in hall_df.index:
         if hall_df.loc[building,"Residence Hall"] == 0:
             df = fill_academic_building(building, 
                 student_df = student_df, 
                 hall_df = hall_df)
             
-            df.to_csv("../data/filled_buildings/{}_students.csv".format(building))
+            df.to_csv(ROOT + "/data/filled_buildings/{}_students.csv".format(building))
         
     return None
 
 
 if __name__ == "__main__":
 
-    #print_hall_dictionary_to_json()
     hall_df = get_hall_by_school_table()
     student_df = get_student_enrollment_data()
 
