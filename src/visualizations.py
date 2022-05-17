@@ -1,16 +1,20 @@
 import pandas as pd
 import numpy as np
 
+import os
+import sys
+
 import matplotlib.pyplot as plt
 import numpy.ma as ma
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-import sys
-sys.path.append('..')
+
+ROOT = os.popen("git rev-parse --show-toplevel").read().split("\n")[0]
+sys.path.append(ROOT)
 
 import src as sc
-#import geopandas
-#import contextily as ctx  
+import geopandas
+import contextily as ctx  
 import json
 
 from os import listdir
@@ -258,9 +262,6 @@ def beeswarm_building_gender(demo_cat, title, building_list = list(sc.hall_short
     axs.scatter([],[], color = "#c85194", s = [12], label = "Woman")
     axs.scatter([],[], color = COLOR_MAP["teal"], s = [12], label = "Transgender or Non-Binary")
     handles, labels = axs.get_legend_handles_labels()
-    #fig.legend(handles, labels, loc='lower right', bbox_to_anchor=[1,0])
-
-    #plt.suptitle(title, y  = .93, fontsize = 18)
     plt.show()
 
 
