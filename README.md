@@ -1,4 +1,8 @@
-# OpArt
+<p align="center">
+  <img width="200" height="200" src="images/op_art.png">
+</p>
+
+# The Optimal Art Curation Tool
 
 This library contains the tool of OpArt: The Optimal Art Curation Tool. Further details about the algorithms in this repository can be found in *A Recommender System for Equitable Public Art Curation and Installation*.
 
