@@ -302,15 +302,113 @@ def compute_cost_matrix(art_df,
 
     return cost_df
 
+def get_normalizing_constants():
+    """ Return normalizing contstants for lambda and tau
 
-def learn_optimal_assignment(cost_df, building_capacity_df, art_capacity_df, current_assignment, lam, tau,init):
+    Returns: 
+        tuple with (norm_lam_factor, norm_tau_factor) which is used to scale
+        lambda and tau for grid search.
+    """
+    hall_df, student_df, art_df = sc.load_data()
+    
+    # Compute building capacity
+    building_capacity_df = sc.get_building_capacity_df()
+    building_capacity =  building_capacity_df.values
+    num_buildings =  building_capacity_df.shape[0]
+    
+    # Compute art capacity
+    art_capacity_df = sc.get_art_capacity_with_downsampling(art_df,
+                    categories = ["gender","race"])
+    art_capacity = art_capacity_df["capacity"].values
+
+    # Get current assignment
+    current_assignment_df = pd.read_csv("current_assignment_df.csv", index_col = 0)
+    current_assignment = current_assignment_df.values
+
+    beta_values = np.array([.01,1,10])
+    term1 = np.zeros((beta_values.shape[0],10))
+    term2 = np.zeros((beta_values.shape[0],10))
+    term3 = np.zeros((beta_values.shape[0],10))
+    for m in range(beta_values.shape[0]):
+        # Compute full n_buildings x n_artworks cost matrix.
+        cost_df = sc.compute_cost_matrix(art_df = art_df, 
+                                        hall_df = hall_df,
+                                        categories = ["gender","race"],
+                                        alpha = -1,
+                                        beta = beta_values[m])
+        num_arts = cost_df.shape[1]
+        t = np.arange(1,num_arts + 1)
+        for k in range(10):
+            # Pick a random permutation in S
+            P = np.random.randn(num_buildings,num_arts)  
+            # Projection
+            for ii in range(num_buildings):
+                v = P[ii,:]
+                if np.all(v>0):
+                    v = v/np.sum(v)
+                    P[ii]=v * building_capacity[ii]
+                else:
+                    mu = v[np.argsort(-v)]
+                    tmp = np.divide(np.cumsum(mu)-building_capacity[ii],t)
+                    idx_negative = np.argwhere(mu-tmp<=0)
+                    try:
+                        idx_neg = idx_negative[0]
+                        idx_neg = idx_neg.item()
+                    except:
+                        idx_neg = -1
+                    theta = (np.sum(mu[0:idx_neg])-building_capacity[ii])/(idx_neg)
+                    P[ii,:] =  np.maximum(P[ii,:]-theta,0)  
+            term1[m,k] = np.trace(np.matmul(np.transpose(cost_df.values),P))
+            term2[m,k] = np.linalg.norm(np.sum(P,axis=0)-art_capacity)**2
+            term3[m,k] = np.linalg.norm(P-current_assignment)**2
+
+    term1_avg = np.mean(term1)
+    term2_avg = np.mean(term2)
+    term3_avg = np.mean(term3)
+
+    norm_lam_factor = term1_avg/term2_avg
+    norm_tau_factor = term1_avg/term3_avg
+    
+    return norm_lam_factor, norm_tau_factor
+
+def learn_optimal_assignment(cost_df, lam, tau,init):
     """ Return n_buildings x n_artworkks assignment array
+
+    Input: 
+        cost_df: (dataframe) cost dataframe typically computed with 
+            `compute_cost_matrix`.
+        lam: (float) lambda factor determines weight of artwork capacity 
+            constraints in optimization.
+        tau: (float) tau factor determines weight of preference for current 
+            assignment in optimization.
+        init: (int) one of the following: 
+                1 - identity matrix initialization
+                2 - uniform initialization
+                3 - current assignment initialization
+                4 - random permutation initialization
+    Returns:
+        num_buildings x num_arts assignment dataframe where the entry in row n 
+        and column m is the copies of artwork m to by hung in building n.
     """
     C = cost_df.values
-    num_buildings = cost_df.shape[0]
-    num_arts = cost_df.shape[1]
-    building_capacity = building_capacity_df.values
+
+    # Load data
+    hall_df, student_df, art_df = sc.load_data()
+    
+    # Compute building capacity
+    building_capacity_df = sc.get_building_capacity_df()
+    building_capacity =  building_capacity_df.values
+    num_buildings =  building_capacity_df.shape[0]
+    
+    # Compute art capacity
+    art_capacity_df = sc.get_art_capacity_with_downsampling(art_df,
+                    categories = ["gender","race"])
     art_capacity = art_capacity_df["capacity"].values
+    num_arts = art_capacity_df.shape[0]
+
+    # Get current assignment
+    current_assignment_df = pd.read_csv("current_assignment_df.csv", index_col = 0)
+    current_assignment = current_assignment_df.values
 
     dt = 0.5 * (1/((lam * num_buildings) + tau)) #step size
     t = np.arange(1,num_arts + 1)
@@ -326,23 +424,8 @@ def learn_optimal_assignment(cost_df, building_capacity_df, art_capacity_df, cur
         P = current_assignment
     else:
         P = sample_general_simplex(num_buildings,num_arts,building_capacity)
-        #P = np.random.randn(num_buildings,num_arts)
-        # Projection
-        #for i in range(num_buildings):
-        #    v = P[i,:]
-        #    if np.all(v>0):
-        #        v = v/np.sum(v)
-        #        P[i]=v * building_capacity[i]
-        #    else:
-        #        mu = v[np.argsort(-v)]
-        #        tmp = (np.cumsum(mu) - building_capacity[i])/t
-        #        K = np.argwhere(tmp < mu)[-1][0] + 1
-        #        theta = (np.sum(mu[:K]) - building_capacity[i]) / (K)
-        #        P[i,:] =  np.maximum(P[i,:]-theta,0)
     energy = np.zeros((10,1))
-    print(energy[2])
     for k in range(10):
-        print(k)
         # Gradient descent.
         term2b = np.matmul(ones_vector,np.matmul(np.transpose(ones_vector),P
                           )-np.transpose(art_capacity))
@@ -365,7 +448,6 @@ def learn_optimal_assignment(cost_df, building_capacity_df, art_capacity_df, cur
         energy2 = 0.5*lam*np.linalg.norm(np.sum(P,axis=0)-art_capacity)**2
         energy3 = 0.5*tau*np.linalg.norm(P-current_assignment)**2
         energy[k] = energy1+energy2+energy3
-        print(energy[k])
 
     return pd.DataFrame(P, index = cost_df.index,
                    columns = art_capacity_df["string"].values)
