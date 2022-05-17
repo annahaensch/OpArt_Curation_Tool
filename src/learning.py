@@ -52,13 +52,19 @@ def load_data():
     return hall_df, student_df, art_df
 
 
-def get_quantized_student_data(student_df):
+def get_quantized_student_data(student_df, gender_map, race_map, region_map):
     """
     Return quantized student categories by attribute.
 
     Input: 
         student_df: (dataframe) dataframe of students
-    """
+        gender_map: (dict) mapping of gender strings to enum
+        race_map: (dict) mapping of race strings to enum
+        regin_map: (dict) mapping of region strings to enum
+
+    Output:
+        Dictionary of quantized student enumeration values. 
+    """ 
     hall_df, student_df, art_df = load_data()
 
     S = student_df.shape[0]
@@ -73,12 +79,18 @@ def get_quantized_student_data(student_df):
     return gender_quant, race_quant
 
 
-def get_quantized_art_data(art_df):
+def get_quantized_art_data(art_df, gender_map, race_map, region_map):
     """
     Return quantized art categories by attribute.
 
     Input: 
         art_df: (dataframe) dataframe of artworks.
+        gender_map: (dict) mapping of gender strings to enum
+        race_map: (dict) mapping of race strings to enum
+        regin_map: (dict) mapping of region strings to enum
+
+    Output: 
+        Dictionary of quantized art enumeration values.
     """
     hall_df, student_df, art_df = load_data()
     A = art_df.shape[0]
@@ -207,6 +219,7 @@ def compute_cost_matrix(art_df,
     folder_files = set(os.listdir(my_path))
     assert set(hall_files).issubset(folder_files)
     
+    print("test 1")
     # Load mappings
     mappings = get_mapping_dicts()
     mapping_dict = {"gender":mappings[0],
@@ -214,7 +227,10 @@ def compute_cost_matrix(art_df,
                    "region":mappings[2]}
 
     # Get quantized artwork dictionaries and reduced dataframe.
-    quant_a = get_quantized_art_data(new_art_df)
+    quant_a = get_quantized_art_data(new_art_df,
+                        gender_map = mapping_dict["gender"], 
+                        race_map = mapping_dict["race"], 
+                        region_map = mapping_dict["region"])
 
     quant_a_dict = {"gender":quant_a[0],
                    "race":quant_a[1]
@@ -232,9 +248,10 @@ def compute_cost_matrix(art_df,
     # Initialize empty dataframe
     cost_df = pd.DataFrame(index = hall_df.index,
                           columns = list(new_art_df.index))
-
+    print("test 2")
     for i in range(len(hall_files)):
         name = hall_files[i].split("_students.csv")[0]
+        print(name)
         df = pd.read_csv(ROOT + "/data/filled_buildings/{}".format(
             hall_files[i]), index_col = 0)
         df.reset_index(drop = True, inplace = True)
@@ -246,7 +263,10 @@ def compute_cost_matrix(art_df,
                     columns = cat_quant)
         
         # Get quantized student dictionaries
-        quant_s = get_quantized_student_data(df)
+        quant_s = get_quantized_student_data(df, 
+                        gender_map = mapping_dict["gender"], 
+                        race_map = mapping_dict["race"], 
+                        region_map = mapping_dict["region"])
 
         quant_s_dict = {"gender":quant_s[0],
                        "race":quant_s[1]}
