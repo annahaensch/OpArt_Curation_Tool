@@ -16,10 +16,7 @@ from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
 
-import os
 ROOT = os.popen("git rev-parse --show-toplevel").read().split("\n")[0]
-
-import sys
 sys.path.append(ROOT)
 
 import src as sc
@@ -46,9 +43,6 @@ def load_data():
     hall_df = pd.read_csv(ROOT + "/data/hall_df.csv", index_col = 0)
     hall_df.sort_index(inplace = True)
 
-    # Drop Capen House. 
-    #hall_df = hall_df[hall_df.index != "capen_house"]
-
     # Gather student data
     student_df = sc.get_student_enrollment_data()
     
@@ -58,12 +52,19 @@ def load_data():
     return hall_df, student_df, art_df
 
 
-def get_quantized_student_data(student_df,gender_map, race_map, region_map):
+def get_quantized_student_data(student_df):
     """
     Return quantized student categories by attribute.
+
+    Input: 
+        student_df: (dataframe) dataframe of students
     """
+    hall_df, student_df, art_df = load_data()
+
     S = student_df.shape[0]
     
+    gender_map, race_map, region_map = get_mapping_dicts()
+
     gender_quant = {g:student_df["gender_enum"].value_counts().to_dict().get(g,
                                             0)/S for g in gender_map.values()}
     race_quant = {g:student_df["race_enum"].value_counts().to_dict().get(g,
@@ -72,11 +73,17 @@ def get_quantized_student_data(student_df,gender_map, race_map, region_map):
     return gender_quant, race_quant
 
 
-def get_quantized_art_data(art_df,gender_map, race_map, region_map):
+def get_quantized_art_data(art_df):
     """
     Return quantized art categories by attribute.
+
+    Input: 
+        art_df: (dataframe) dataframe of artworks.
     """
+    hall_df, student_df, art_df = load_data()
     A = art_df.shape[0]
+
+    gender_map, race_map, region_map = get_mapping_dicts()
 
     gender_quant = {g:art_df["gender_enum"].value_counts().to_dict().get(g,0)/A 
                                             for g in gender_map.values()}
@@ -207,10 +214,7 @@ def compute_cost_matrix(art_df,
                    "region":mappings[2]}
 
     # Get quantized artwork dictionaries and reduced dataframe.
-    quant_a = get_quantized_art_data(new_art_df,
-                        gender_map = mapping_dict["gender"], 
-                        race_map = mapping_dict["race"], 
-                        region_map = mapping_dict["region"])
+    quant_a = get_quantized_art_data(new_art_df)
 
     quant_a_dict = {"gender":quant_a[0],
                    "race":quant_a[1]
@@ -242,10 +246,7 @@ def compute_cost_matrix(art_df,
                     columns = cat_quant)
         
         # Get quantized student dictionaries
-        quant_s = get_quantized_student_data(df,
-                        gender_map = mapping_dict["gender"], 
-                        race_map = mapping_dict["race"], 
-                        region_map = mapping_dict["region"])
+        quant_s = get_quantized_student_data(df)
 
         quant_s_dict = {"gender":quant_s[0],
                        "race":quant_s[1]}
@@ -306,15 +307,17 @@ def compute_cost_matrix(art_df,
 
     return cost_df
 
-def get_normalizing_constants():
+def get_normalizing_constants(art_df, hall_df):
     """ Return normalizing contstants for lambda and tau
 
+    Input: 
+        art_df: (dataframe) art works with attributes
+        hall_df: (dataframe) one-hot dataframe with halls as index, schools as columns
+        
     Returns: 
-        tuple with (norm_lam_factor, norm_tau_factor) which is used to scale
+        Tuple with (norm_lam_factor, norm_tau_factor) which is used to scale
         lambda and tau for grid search.
-    """
-    hall_df, student_df, art_df = sc.load_data()
-    
+    """    
     # Compute building capacity
     building_capacity_df = sc.get_building_capacity_df()
     building_capacity =  building_capacity_df.values
@@ -341,27 +344,11 @@ def get_normalizing_constants():
                                         alpha = -1,
                                         beta = beta_values[m])
         num_arts = cost_df.shape[1]
-        t = np.arange(1,num_arts + 1)
         for k in range(10):
             # Pick a random permutation in S
-            P = np.random.randn(num_buildings,num_arts)  
-            # Projection
-            for ii in range(num_buildings):
-                v = P[ii,:]
-                if np.all(v>0):
-                    v = v/np.sum(v)
-                    P[ii]=v * building_capacity[ii]
-                else:
-                    mu = v[np.argsort(-v)]
-                    tmp = np.divide(np.cumsum(mu)-building_capacity[ii],t)
-                    idx_negative = np.argwhere(mu-tmp<=0)
-                    try:
-                        idx_neg = idx_negative[0]
-                        idx_neg = idx_neg.item()
-                    except:
-                        idx_neg = -1
-                    theta = (np.sum(mu[0:idx_neg])-building_capacity[ii])/(idx_neg)
-                    P[ii,:] =  np.maximum(P[ii,:]-theta,0)  
+            P = sample_general_simplex(n_rows = num_buildings,
+                                    n_columns = num_arts,
+                                    capacity = building_capacity)  
             term1[m,k] = np.trace(np.matmul(np.transpose(cost_df.values),P))
             term2[m,k] = np.linalg.norm(np.sum(P,axis=0)-art_capacity)**2
             term3[m,k] = np.linalg.norm(P-current_assignment)**2
@@ -375,10 +362,12 @@ def get_normalizing_constants():
     
     return norm_lam_factor, norm_tau_factor
 
-def learn_optimal_assignment(cost_df, lam, tau,init):
+def learn_optimal_assignment(hall_df, art_df, cost_df, lam, tau,init, iterations):
     """ Return n_buildings x n_artworkks assignment array
 
     Input: 
+        hall_df: (dataframe) one-hot dataframe with halls as index, schools as columns
+        art_df: (dataframe) art works with attributes
         cost_df: (dataframe) cost dataframe typically computed with 
             `compute_cost_matrix`.
         lam: (float) lambda factor determines weight of artwork capacity 
@@ -390,14 +379,13 @@ def learn_optimal_assignment(cost_df, lam, tau,init):
                 2 - uniform initialization
                 3 - current assignment initialization
                 4 - random permutation initialization
+        iterations: (int) number of iterations of gradient descent
+
     Returns:
         num_buildings x num_arts assignment dataframe where the entry in row n 
         and column m is the copies of artwork m to by hung in building n.
     """
     C = cost_df.values
-
-    # Load data
-    hall_df, student_df, art_df = sc.load_data()
     
     # Compute building capacity
     building_capacity_df = sc.get_building_capacity_df()
@@ -427,9 +415,11 @@ def learn_optimal_assignment(cost_df, lam, tau,init):
     elif init==3:
         P = current_assignment
     else:
-        P = sample_general_simplex(num_buildings,num_arts,building_capacity)
-    energy = np.zeros((10,1))
-    for k in range(10):
+        P = sample_general_simplex(n_rows = num_buildings,
+                                n_columns = num_arts,
+                                capacity = building_capacity)
+    energy = np.zeros((iterations,1))
+    for k in range(iterations):
         # Gradient descent.
         term2b = np.matmul(ones_vector,np.matmul(np.transpose(ones_vector),P
                           )-np.transpose(art_capacity))
@@ -453,8 +443,21 @@ def learn_optimal_assignment(cost_df, lam, tau,init):
         energy3 = 0.5*tau*np.linalg.norm(P-current_assignment)**2
         energy[k] = energy1+energy2+energy3
 
-    return pd.DataFrame(P, index = cost_df.index,
+    # print energy to output file.
+    # Print outpout to file.
+    exists  = os.path.exists(ROOT + "/output")
+    if exists  == False:
+        os.mkdir(ROOT + "/output")
+
+    d = datetime.now().strftime("%Y%m%d%H%M%S")
+    filename = f"energy_df__{d}.csv"
+    pd.DataFrame(energy).to_csv(ROOT + "/output/" + filename)
+    logging.info(f"\n Energy printed to : ../output/{filename}")
+
+    assignment_df = pd.DataFrame(P, index = cost_df.index,
                    columns = art_capacity_df["string"].values)
+
+    return assignment_df
 
 
 def validate_assignment(assignment_df):
@@ -532,22 +535,41 @@ def validate_assignment(assignment_df):
     
     return val_df[["Optimized","Baseline"]]
 
-# This script samples a matrix P of size N by M where P>=0 and P1 = h
-# In other words, each row of P, denoted by P_i lies in the general simplex
-# where (P_i)_j>=0 and sum_{j=1}^{M} (P_i) = h_i
-def sample_general_simplex(N,M,h):
-    P = np.zeros((N,M))
-    for i in range(N):
+def sample_general_simplex(n_rows,n_columns,capacity):
+    """ Samples matrix from general simplex. 
+
+    Inputs: 
+        n_rows: (int) number of rows
+        n_columns: (int) number of columns.
+        capacity: (array) capacity array n_rows X 1
+
+    Returns: 
+        Samples a matrix P of size N by M where P>=0 and P1 = h.  
+        n other words, each row of P, denoted by P_i lies in the 
+        general simplex, where (P_i)_j>=0 and sum_{j=1}^{M} (P_i) = h_i
+    """
+    P = np.zeros((n_rows,n_columns))
+    for i in range(n_rows):
         init_sum = 0
-        for j in range(M-1):
+        for j in range(n_columns-1):
             phi = np.random.uniform(0,1)
-            P[i,j] =(1-init_sum)*(1-np.power(phi,1/(M-j-1))) 
+            P[i,j] =(1-init_sum)*(1-np.power(phi,1/(n_columns-j-1))) 
             init_sum = init_sum+ P[i,j]
-        P[i,M-1]  = 1- init_sum
-        P[i,:] = np.multiply(P[i,:],h[i])
+        P[i,n_columns-1]  = 1- init_sum
+        P[i,:] = np.multiply(P[i,:],capacity[i])
     return P
 
 def baseline_average_value(category = "gender", in_group = "Man"):
+    """ Set baseline average value for validation
+
+    Inputs:
+        category: (str) "gender" or "race"
+        in_group: (str) member of cateogry to be considered in "in-group"
+
+    Returns: 
+        Tuple where first term is average representation for in-group, and the 
+        second term is the average representation in the non-in-group.
+    """
     # Load data
     hall_df, student_df, art_df = load_data()
     df = pd.DataFrame(np.nan,index = student_df["student_id"].values,
@@ -585,6 +607,16 @@ def baseline_average_value(category = "gender", in_group = "Man"):
     return in_expected, out_expected
 
 def optimized_average_value(assignment_df, category = "gender", in_group = "Man"):
+    """ Get optimized average value for validation
+
+    Inputs:
+        category: (str) "gender" or "race"
+        in_group: (str) member of cateogry to be considered in "in-group"
+
+    Returns: 
+        Tuple where first term is average representation for in-group, and the 
+        second term is the average representation in the non-in-group.
+    """
     # Load data
     hall_df, student_df, art_df = load_data()
     df = pd.DataFrame(np.nan,index = student_df["student_id"].values,
@@ -622,7 +654,7 @@ def optimized_average_value(assignment_df, category = "gender", in_group = "Man"
     return in_expected, out_expected
 
 
-def run_art_assignment(beta, lam, tau, init):
+def run_art_assignment(beta, lam, tau, init, iterations):
     """
     Input: 
         beta: (float) beta factor determines weight of the diversity 
@@ -636,6 +668,7 @@ def run_art_assignment(beta, lam, tau, init):
                 2 - uniform initialization
                 3 - current assignment initialization
                 4 - random permutation initialization
+        iterations: (int) number of iterations of gradient descent
     Returns:
         num_buildings x num_arts assignment dataframe where the entry in row n 
         and column m is the copies of artwork m to by hung in building n.
@@ -671,16 +704,21 @@ def run_art_assignment(beta, lam, tau, init):
         ]:art_capacity_df.loc[i,"string"] for i in art_capacity_df.index})
 
     # Compute normalizing constants for lambda and tau
-    norm_lam_factor, norm_tau_factor = get_normalizing_constants()
+    norm_lam_factor, norm_tau_factor = get_normalizing_constants(hall_df, student_df, art_df)
 
     logging.info("\n Computing assignment matrix...")
     logging.info(f"\n lambda = {lam}, tau = {tau}, init = {init}")
 
     # Compute assignment matrix
-    assignment_df = learn_optimal_assignment(cost_df, 
-                             lam = norm_lam_factor*lam, 
-                             tau=norm_tau_factor*tau,
-                             init = init
+    assignment_df = learn_optimal_assignment(
+                            hall_df = hall_df, 
+                            student_df = student_df, 
+                            art_df = art_df,
+                            cost_df = cost_df, 
+                            lam = norm_lam_factor*lam, 
+                            tau=norm_tau_factor*tau,
+                            init = init,
+                            iterations = iterations
                              ) 
 
     # Check that assignment numbers are sufficiently close to building capacity.
@@ -710,4 +748,9 @@ if __name__ == "__main__":
     tau = int(sys.argv[3])
     init = int(sys.argv[4])
 
-    run_art_assignment(beta, lam, tau, init)
+    try:
+        iterations = int(sys.argv[5])
+    except: 
+        iterations = 1000
+
+    run_art_assignment(beta, lam, tau, init, iterations)
