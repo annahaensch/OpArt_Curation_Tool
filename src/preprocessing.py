@@ -2,17 +2,16 @@
 import pandas as pd
 import numpy as np
 import pdfplumber
+import json 
+import os
+import sys
 
 import logging
 logging.basicConfig(level=logging.INFO)
 
-import os
+
 ROOT = os.popen("git rev-parse --show-toplevel").read().split("\n")[0]
-
-import sys
 sys.path.append(ROOT)
-
-import src as sc
 
 # This is a dictionary for the hall names used by the TUAG system.
 hall_tuag_name_dict = {
@@ -380,10 +379,12 @@ student_demo_dict = {
 
 def process_art_dataframe():
 
-    mappings = sc.get_mapping_dicts()
-    mapping_dict = {"gender":mappings[0],
-               "race":mappings[1],
-               "region":mappings[2]}
+    with open(ROOT + "/data/mappings.json","r") as file:
+        mapping_dict = json.load(file)
+
+    mapping_dict = {"gender":mapping_dict["gender_mapping"],
+               "race":mapping_dict["race_mapping"],
+               "region":mapping_dict["region_mapping"]}
 
     art_df = pd.read_excel(ROOT + "/data/TUAG_Artist_Subject_Donor_Data.xlsx")
     art_df.fillna("Unknown", inplace = True)
