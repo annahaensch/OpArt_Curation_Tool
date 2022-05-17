@@ -450,7 +450,7 @@ def learn_optimal_assignment(hall_df, art_df, cost_df, lam, tau,init, iterations
         os.mkdir(ROOT + "/output")
 
     d = datetime.now().strftime("%Y%m%d%H%M%S")
-    filename = f"energy_df__{d}.csv"
+    filename = f"energy_df_{d}.csv"
     pd.DataFrame(energy).to_csv(ROOT + "/output/" + filename)
     logging.info(f"\n Energy printed to : ../output/{filename}")
 
@@ -704,7 +704,7 @@ def run_art_assignment(beta, lam, tau, init, iterations):
         ]:art_capacity_df.loc[i,"string"] for i in art_capacity_df.index})
 
     # Compute normalizing constants for lambda and tau
-    norm_lam_factor, norm_tau_factor = get_normalizing_constants(hall_df, student_df, art_df)
+    norm_lam_factor, norm_tau_factor = get_normalizing_constants(hall_df, art_df)
 
     logging.info("\n Computing assignment matrix...")
     logging.info(f"\n lambda = {lam}, tau = {tau}, init = {init}")
