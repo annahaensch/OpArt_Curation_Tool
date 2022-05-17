@@ -1,0 +1,17 @@
+#
+##### OpArt Curation Tool requirements.txt
+#
+##### requirements without version specifiers
+contextily
+geopandas
+matplotlib
+notebook
+openpyxl
+pandas
+pdfplumber
+requests
+scipy
+sklearn
+
+##### requirements with version specifiers
+
