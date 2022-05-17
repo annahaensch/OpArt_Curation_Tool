@@ -656,8 +656,8 @@ def run_art_assignment(beta, lam, tau, init):
                     categories = ["gender","race"])
     art_capacity = art_capacity_df["capacity"].values
 
-    logging.info("Computing cost matrix...")
-    logging.info(f"beta = {beta}")
+    logging.info("\n Computing cost matrix...")
+    logging.info(f"\n beta = {beta}")
 
     # Compute full n_buildings x n_artworks cost matrix.
     cost_df = compute_cost_matrix(art_df = art_df, 
@@ -673,8 +673,8 @@ def run_art_assignment(beta, lam, tau, init):
     # Compute normalizing constants for lambda and tau
     norm_lam_factor, norm_tau_factor = get_normalizing_constants()
 
-    logging.info("Computing assignment matrix...")
-    logging.info(f"lambda = {lam}, tau = {tau}, init = {init}")
+    logging.info("\n Computing assignment matrix...")
+    logging.info(f"\n lambda = {lam}, tau = {tau}, init = {init}")
 
     # Compute assignment matrix
     assignment_df = learn_optimal_assignment(cost_df, 
@@ -687,13 +687,18 @@ def run_art_assignment(beta, lam, tau, init):
     assert np.all(assignment_df.sum(axis = 1).values.reshape(-1,1) - 
                                 building_capacity_df.values.reshape(-1,1) < 1e-08)
 
+    # Print outpout to file.
+    exists  = os.path.exists(ROOT + "/output")
+    if exists  == False:
+        os.mkdir(ROOT + "/output")
+
     d = datetime.now().strftime("%Y%m%d%H%M%S")
     suffix = f"{beta}_{lam}_{tau}_{init}_{d}.csv"
     assignment_df.to_csv(f"{ROOT}/output/assignment_df_{suffix}")
     cost_df.to_csv(f"{ROOT}/output/cost_df_{suffix}")
 
-    logging.info(f"Cost matrix printed to: {ROOT}/output/cost_df_{suffix}")
-    logging.info(f"Assignment matrix printed to: {ROOT}/output/assignment_df_{suffix}")
+    logging.info(f"\n Cost matrix printed to: {ROOT}/output/cost_df_{suffix}")
+    logging.info(f"\n Assignment matrix printed to: {ROOT}/output/assignment_df_{suffix}")
 
     return assignment_df
 
