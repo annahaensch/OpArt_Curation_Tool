@@ -6,8 +6,11 @@ import numpy as np
 import logging
 logging.basicConfig(level=logging.WARNING)
 
+import os
+ROOT = os.popen("git rev-parse --show-toplevel").read().split("\n")[0]
+
 import sys
-sys.path.append('..')
+sys.path.append(ROOT)
 
 import src as sc
 
@@ -382,7 +385,7 @@ def process_art_dataframe():
                "race":mappings[1],
                "region":mappings[2]}
 
-    art_df = pd.read_excel("../data/TUAG_Artist_Subject_Donor_Data.xlsx")
+    art_df = pd.read_excel(ROOT + "/data/TUAG_Artist_Subject_Donor_Data.xlsx")
     art_df.fillna("Unknown", inplace = True)
     art_df["loc"] = [hall_tuag_name_dict[a] for a in art_df["Current Location (Campus and Building)"]]
     art_df.columns = [c.lower().strip(" ").replace(" ","_").replace("__","_") for c in art_df.columns]
@@ -408,7 +411,7 @@ def process_art_dataframe():
                     "race_enum",
                     "region_enum"
                     ]
-    art_df[col_of_interest].to_csv("../data/2022_03_04_art_data_cleaned.csv")
+    art_df[col_of_interest].to_csv(ROOT + "/data/2022_03_04_art_data_cleaned.csv")
     return art_df[col_of_interest]
 
 
@@ -416,7 +419,7 @@ def process_student_dataframe():
     df_totals = pd.DataFrame(columns = ["school","race","gender","full_time","part_time","total"])
 
     # Data downloaded from Tufts 2021 Fall Enrollment Calculator.
-    with pdfplumber.open(r'../data/Tufts_2021_Fall_Enrollment_Calculator_Data.pdf') as pdf:
+    with pdfplumber.open(ROOT + r'/data/Tufts_2021_Fall_Enrollment_Calculator_Data.pdf') as pdf:
         for p in range(len(pdf.pages)):
             page = pdf.pages[p]
         
@@ -447,7 +450,7 @@ def process_student_dataframe():
 
     assert df_totals["total"].sum() == 13293 # Known total enrollment Fall 2021
 
-    df_totals.to_csv("../data/Tufts_2021_Fall_Enrollment_Calculator_Data.csv")
+    df_totals.to_csv(ROOT + "/data/Tufts_2021_Fall_Enrollment_Calculator_Data.csv")
     return df_totals
 
 if __name__ == "__main__":

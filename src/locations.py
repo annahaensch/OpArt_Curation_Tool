@@ -29,7 +29,7 @@ import os
 ROOT = os.popen("git rev-parse --show-toplevel").read().split("\n")[0]
 
 import sys
-sys.path.append('..')
+sys.path.append(ROOT)
 
 import src as sc
 
