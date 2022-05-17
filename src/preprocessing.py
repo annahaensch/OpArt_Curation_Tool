@@ -1,10 +1,10 @@
 # Preprocessing of Data
 import pandas as pd
 import numpy as np
-#import pdfplumber
+import pdfplumber
 
 import logging
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 
 import os
 ROOT = os.popen("git rev-parse --show-toplevel").read().split("\n")[0]
@@ -455,5 +455,7 @@ def process_student_dataframe():
 
 if __name__ == "__main__":
     
+    logging.info("\n Processing art dataframe...")
     process_art_dataframe()
+    logging.info("\n Processing student dataframe...")
     process_student_dataframe()
