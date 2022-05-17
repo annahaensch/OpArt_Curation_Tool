@@ -444,7 +444,6 @@ def learn_optimal_assignment(hall_df, art_df, cost_df, lam, tau,init, iterations
         energy[k] = energy1+energy2+energy3
 
     # print energy to output file.
-    # Print outpout to file.
     exists  = os.path.exists(ROOT + "/output")
     if exists  == False:
         os.mkdir(ROOT + "/output")
@@ -704,7 +703,7 @@ def run_art_assignment(beta, lam, tau, init, iterations):
         ]:art_capacity_df.loc[i,"string"] for i in art_capacity_df.index})
 
     # Compute normalizing constants for lambda and tau
-    norm_lam_factor, norm_tau_factor = get_normalizing_constants(hall_df, art_df)
+    norm_lam_factor, norm_tau_factor = get_normalizing_constants(art_df, hall_df)
 
     logging.info("\n Computing assignment matrix...")
     logging.info(f"\n lambda = {lam}, tau = {tau}, init = {init}")
