@@ -328,10 +328,11 @@ def get_normalizing_constants(hall_df, student_df, art_df):
     current_assignment_df = pd.read_csv(ROOT + "/data/current_assignment_df.csv", index_col = 0)
     current_assignment = current_assignment_df.values
 
-    beta_values = np.array([.01,1,10])
-    term1 = np.zeros((beta_values.shape[0],10))
-    term2 = np.zeros((beta_values.shape[0],10))
-    term3 = np.zeros((beta_values.shape[0],10))
+    beta_values = np.array([10**-2,10**2, 10**8])
+    iterations = 50
+    term1 = np.zeros((beta_values.shape[0],iterations))
+    term2 = np.zeros((beta_values.shape[0],iterations))
+    term3 = np.zeros((beta_values.shape[0],iterations))
     for m in range(beta_values.shape[0]):
         # Compute full n_buildings x n_artworks cost matrix.
         cost_df = sc.compute_cost_matrix(hall_df = hall_df,
@@ -341,7 +342,7 @@ def get_normalizing_constants(hall_df, student_df, art_df):
                                         alpha = -1,
                                         beta = beta_values[m])
         num_arts = cost_df.shape[1]
-        for k in range(10):
+        for k in range(iterations):
             # Pick a random permutation in S
             P = sample_general_simplex(n_rows = num_buildings,
                                     n_columns = num_arts,
