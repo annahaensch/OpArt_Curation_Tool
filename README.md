@@ -18,12 +18,9 @@ and activate your new environment, with
 ```
 conda activate opart_env
 ``` 
-Now you will need to install the necessary dependencies.  First you'll need to install `pip` with 
+Now you will need to install the necessary dependencies.  First you'll need to conda install `pip` and then install the remaining required Python libraries as follows.
 ```
 conda install pip
-```
-and then install the remaining required Python libraries with 
-```
 pip install -U -r requirements.txt
 ```
 Now your environment should be set up to run anything in the OpArt library.
