@@ -13,6 +13,8 @@ logging.basicConfig(level=logging.INFO)
 ROOT = os.popen("git rev-parse --show-toplevel").read().split("\n")[0]
 sys.path.append(ROOT)
 
+import src as sc
+
 # This is a dictionary for the hall names used by the TUAG system.
 hall_tuag_name_dict = {
         'Crozier Fine Arts' : "crozier_fine_arts", 
@@ -457,6 +459,23 @@ def process_student_dataframe():
 if __name__ == "__main__":
     
     logging.info("\n Processing art dataframe...")
-    process_art_dataframe()
+    data = process_art_dataframe()
     logging.info("\n Processing student dataframe...")
     process_student_dataframe()
+
+    exists  = os.path.exists(ROOT + "/data/hall_dict.json")
+    if exists  == False:
+        logging.info("\n Scaping hall data, the requries network connection and takes a few moments...")
+        data = process_art_dataframe()
+        data = data[data["loc"] != "crozier_fine_arts"]
+        halls = data["loc"].unique()
+        halls.sort()
+        hall_dict = {}
+        for hall in halls:
+            hall_dict[hall] = sc.get_hall_dict(hall)
+            with open(ROOT + '/data/hall_dict.json', 'w') as fp:
+                json.dump(hall_dict, fp)
+        
+    else:
+        with open(ROOT + '/data/hall_dict.json') as json_file:
+            hall_dict = json.load(json_file)
