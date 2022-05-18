@@ -460,8 +460,31 @@ if __name__ == "__main__":
     
     logging.info("\n Processing art dataframe...")
     data = process_art_dataframe()
+    data = data[data["loc"] != "crozier_fine_arts"]
+    data = data[(data["gender"] != "Unreported")&(data["race"] != "Unreported")]
+
+    halls = data["loc"].unique()
+    halls.sort()
+
+    # Populate current assignment dataframe.
+    mappings = sc.get_mapping_dicts()
+    mapping_dict = {"gender":mappings[0],
+                   "race":mappings[1],
+                   "region":mappings[2]}
+    col_index = [f"Woman, {k}" for k in mapping_dict["race"].keys() if k!= "Unreported"
+                ] + [f"Man, {k}" for k in mapping_dict["race"].keys() if k!= "Unreported"]
+    current_assignment_df = pd.DataFrame(0, index = halls, columns = col_index)
+    loc_group = data.groupby("loc")
+    for hall, df in loc_group:
+        gender_group = df.groupby("gender")
+        for gender, gdf in gender_group:
+            for k, v in gdf["race"].value_counts().to_dict().items():
+                current_assignment_df.loc[hall,f"{gender}, {k}"] = v
+    current_assignment_df.to_csv(ROOT + "/data/current_assignment_df.csv")
+
     logging.info("\n Processing student dataframe...")
     process_student_dataframe()
+    sc.get_student_enrollment_data()
 
     exists  = os.path.exists(ROOT + "/data/hall_dict.json")
     if exists  == False:
@@ -474,3 +497,5 @@ if __name__ == "__main__":
             hall_dict[hall] = sc.get_hall_dict(hall)
             with open(ROOT + '/data/hall_dict.json', 'w') as fp:
                 json.dump(hall_dict, fp)
+    logging.info("\n Processing hall dataframe...")
+    sc.get_hall_by_school_table()
