@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="200" height="200" src="images/op_art.png">
+  <img width="600" src="images/op_art.png">
 </p>
 
 # The Optimal Art Curation Tool
