@@ -2,16 +2,19 @@
 ##### OpArt Curation Tool requirements.txt
 #
 ##### requirements without version specifiers
-contextily
+bs4
 geopandas
+geopy
+lxml
 matplotlib
 notebook
 openpyxl
 pandas
 pdfplumber
+pyarrow
 requests
 scipy
 sklearn
 
 ##### requirements with version specifiers
-
+contextily==1.0.1
