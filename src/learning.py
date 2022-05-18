@@ -103,7 +103,7 @@ def get_building_capacity_df():
     Return dataframe of art capacity by building.
     """
     try:
-        art_df = pd.read_csv(ROOT + "/data/2022_03_04_art_data_cleaned.csv", 
+        art_df = pd.read_csv(ROOT + "/data/art_data_cleaned.csv", 
         index_col = 0)
     except:
         art_df = process_art_dataframe()
