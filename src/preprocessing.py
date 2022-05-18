@@ -475,7 +475,3 @@ if __name__ == "__main__":
             hall_dict[hall] = sc.get_hall_dict(hall)
             with open(ROOT + '/data/hall_dict.json', 'w') as fp:
                 json.dump(hall_dict, fp)
-        
-    else:
-        with open(ROOT + '/data/hall_dict.json') as json_file:
-            hall_dict = json.load(json_file)
