@@ -12,11 +12,12 @@ from scipy.special import logsumexp
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
 
-import sys
-sys.path.append('..')
+ROOT = os.popen("git rev-parse --show-toplevel").read().split("\n")[0]
+sys.path.append(ROOT)
 
 import src as sc
 
@@ -24,7 +25,7 @@ def get_mapping_dicts():
     """
     Get enum to name mappings for gender, race, and region.
     """
-    with open("../data/mappings.json","r") as file:
+    with open(ROOT + "/data/mappings.json","r") as file:
         mapping_dict = json.load(file)
 
         gender_map = mapping_dict["gender_mapping"]
@@ -39,11 +40,8 @@ def load_data():
     Load student, art, and building data.
     """
     # Gather building data
-    hall_df = pd.read_csv("../data/hall_df.csv", index_col = 0)
+    hall_df = pd.read_csv(ROOT + "/data/hall_df.csv", index_col = 0)
     hall_df.sort_index(inplace = True)
-
-    # Drop Capen House. 
-    #hall_df = hall_df[hall_df.index != "capen_house"]
 
     # Gather student data
     student_df = sc.get_student_enrollment_data()
@@ -54,12 +52,21 @@ def load_data():
     return hall_df, student_df, art_df
 
 
-def get_quantized_student_data(student_df,gender_map, race_map, region_map):
+def get_quantized_student_data(student_df, gender_map, race_map, region_map):
     """
     Return quantized student categories by attribute.
-    """
+
+    Input: 
+        student_df: (dataframe) dataframe of students
+        gender_map: (dict) mapping of gender strings to enum
+        race_map: (dict) mapping of race strings to enum
+        regin_map: (dict) mapping of region strings to enum
+
+    Output:
+        Dictionary of quantized student enumeration values. 
+    """ 
     S = student_df.shape[0]
-    
+
     gender_quant = {g:student_df["gender_enum"].value_counts().to_dict().get(g,
                                             0)/S for g in gender_map.values()}
     race_quant = {g:student_df["race_enum"].value_counts().to_dict().get(g,
@@ -68,9 +75,18 @@ def get_quantized_student_data(student_df,gender_map, race_map, region_map):
     return gender_quant, race_quant
 
 
-def get_quantized_art_data(art_df,gender_map, race_map, region_map):
+def get_quantized_art_data(art_df, gender_map, race_map, region_map):
     """
     Return quantized art categories by attribute.
+
+    Input: 
+        art_df: (dataframe) dataframe of artworks.
+        gender_map: (dict) mapping of gender strings to enum
+        race_map: (dict) mapping of race strings to enum
+        region_map: (dict) mapping of region strings to enum
+
+    Output: 
+        Dictionary of quantized art enumeration values.
     """
     A = art_df.shape[0]
 
@@ -86,30 +102,20 @@ def get_building_capacity_df():
     """
     Return dataframe of art capacity by building.
     """
-    try:
-        art_df = pd.read_csv("../data/2022_03_04_art_data_cleaned.csv", 
+    # Get current assignment
+    current_assignment_df = pd.read_csv(ROOT + "/data/current_assignment_df.csv", 
         index_col = 0)
-    except:
-        art_df = process_art_dataframe()
-        
-
-    # Remove art in storage.
-    art_df = art_df[art_df["loc"] != "crozier_fine_arts"].copy()
-
-    building_dict = art_df["loc"].value_counts().to_dict()
-
-    building_df = pd.DataFrame([v for v in building_dict.values()
-        ], index = building_dict.keys(), columns = ["capacity"])
-    building_df.sort_index(inplace = True)
+    current_assignment = current_assignment_df.values
     
-    return building_df
+    return pd.DataFrame(current_assignment_df.sum(axis = 1), columns = ["capacity"])
 
 
-def get_art_capacity_with_downsampling(art_df, categories = ["gender","race"]):
+def get_art_capacity_with_downsampling(student_df, art_df, categories = ["gender","race"]):
     """
     Return dataframe with columns "tuple","original_index","capacity".
 
     Input:
+        student_df: (dataframe) dataframe of students
         art_df: (dataframe) art works with attributes
         categories: (list of strings) list containing "gender" or "race".
 
@@ -118,50 +124,26 @@ def get_art_capacity_with_downsampling(art_df, categories = ["gender","race"]):
         and artwork type capacity (i.e. how many works of the given type exist in
         the collection).
     """
-    cat_enum = ["{}_enum".format(c) for c in categories]
+    enum_idx, str_idx = sc.get_categorical_indices(student_df = student_df, 
+                        categories = categories)
     
-    df = art_df.copy()
-    for c in cat_enum:
-        df = df[df[c] != 0]
-        
-    art_tuple_series = pd.Series([tuple(v) for v in df[cat_enum].values], 
-                            index = df.index)
-
-    art_string_series = pd.Series([", ".join(v) for v in df[categories].values], 
-                            index = df.index)
+    art_capacity_df = pd.DataFrame(index = enum_idx)
+    art_capacity_df["string"] = [", ".join(s) for s in str_idx]
+    capacities = []
+    for i in str_idx:
+        capacities.append(np.sum([int(tuple(v) == i) for v in art_df[categories].values]))
+    art_capacity_df["capacity"] = capacities
     
-    art_tuple_dict = art_tuple_series.value_counts().to_dict()
-    
-    # Initialize empty dataframe
-    art_capacity_df = pd.DataFrame()
-    art_capacity_df["tuple"] = art_tuple_series.values
-    art_capacity_df["string"] = art_string_series.values
-    art_capacity_df["original_index"] = list(art_tuple_series.index)
-
-    art_capacity_df.sort_values(by = "tuple", ascending = True, inplace = True)
-    art_capacity_df.reset_index(drop = True, inplace = True)
-    
-    # Add capacity from art_tuple_dict.
-    for i in art_capacity_df.index:
-        art_capacity_df.loc[i,"capacity"] = art_tuple_dict[
-                                    art_capacity_df.loc[i,"tuple"]]    
-
-    # Drop duplicate values.
-    art_capacity_df.drop_duplicates(subset = ["tuple"], keep = "first", 
-        inplace = True)
-    art_capacity_df.reset_index(drop = True, inplace = True)
-
-    # Assert that all art pieces are being counted.
-    assert art_capacity_df.loc[:,"capacity"].sum() == df.shape[0]
-
     # Clip capacity at 100 to prevent overuse.
     art_capacity_df["capacity"] = art_capacity_df["capacity"].clip(upper = 100)
 
     return art_capacity_df
 
 
-def compute_cost_matrix(art_df, 
+def compute_cost_matrix(
                 hall_df,
+                student_df,
+                art_df,
                 categories = ["gender","race"],
                 alpha = -1,
                 beta = 100):
@@ -169,8 +151,9 @@ def compute_cost_matrix(art_df,
     Return dataframe with columns "tuple","original_index","capacity".
 
     Input:
-        art_df: (dataframe) art works with attributes
         hall_df: (dataframe) one-hot dataframe with halls as index, schools as columns
+        student_df: (dataframe) dataframe of students
+        art_df: (dataframe) art works with attributes
         categories: (list of strings) list containing "gender" or "race".
         alpha: (float) model parameter determining outlier importance.
         beta: (float) model parameter determining art rep. importance.
@@ -182,14 +165,17 @@ def compute_cost_matrix(art_df,
     cat_enum = ["{}_enum".format(c) for c in categories]
     cat_quant = ["{}_quant".format(c) for c in categories]
 
-    # Drop rows from art_df where category value is unreported.
-    new_art_df = art_df.copy()
-    for c in cat_enum:
-        new_art_df = new_art_df[new_art_df[c] != 0]
-    new_art_df.reset_index(drop = True, inplace = True)
+    # Get current assignment
+    current_assignment_df = pd.read_csv(ROOT + "/data/current_assignment_df.csv", 
+        index_col = 0)
+    current_assignment = current_assignment_df.values
     
+    # Get relevant index values
+    enum_idx, str_idx = sc.get_categorical_indices(student_df = student_df, 
+        categories = ["gender","race"])
+
     # Check that the filled building data is available.
-    my_path = "../data/filled_buildings/"
+    my_path = ROOT + "/data/filled_buildings/"
     hall_files = ["{}_students.csv".format(f) for f in hall_df.index]
     hall_files.sort()
                   
@@ -201,9 +187,15 @@ def compute_cost_matrix(art_df,
     mapping_dict = {"gender":mappings[0],
                    "race":mappings[1],
                    "region":mappings[2]}
+    
+    # Drop rows from art_df where category value is unreported.
+    reduced_art_df = art_df.copy()
+    for c in cat_enum:
+        reduced_art_df = reduced_art_df[reduced_art_df[c] != 0]
+    reduced_art_df.reset_index(drop = True, inplace = True)
 
     # Get quantized artwork dictionaries and reduced dataframe.
-    quant_a = get_quantized_art_data(new_art_df,
+    quant_a = get_quantized_art_data(reduced_art_df,
                         gender_map = mapping_dict["gender"], 
                         race_map = mapping_dict["race"], 
                         region_map = mapping_dict["region"])
@@ -212,22 +204,25 @@ def compute_cost_matrix(art_df,
                    "race":quant_a[1]
                    }
 
+    # Create new art data frame with strings, enums, and quants.
+    enum_df = pd.DataFrame(enum_idx, columns = [f"{c}_enum" for c in categories])
+    str_df = pd.DataFrame(str_idx, columns = [f"{c}" for c in categories])
+    new_art_df = str_df.join(enum_df)
+
     for c in categories:
         new_art_df["{}_quant".format(c)] = new_art_df["{}_enum".format(c)].map(quant_a_dict[c])
         
-    new_art_df["tuple"] = [tuple(v) for v in new_art_df[cat_enum].values]
-    new_art_df.sort_values(by = "tuple", inplace = True)
-    new_art_df = new_art_df.drop_duplicates(subset = ["tuple"])
-    new_art_df.set_index("tuple", drop = True, inplace = True)
+    new_art_df.replace(0,1e-08, inplace = True) # To avoid divbyzero errors
     df_quant_a = new_art_df[cat_quant]
-    
+
     # Initialize empty dataframe
     cost_df = pd.DataFrame(index = hall_df.index,
-                          columns = list(new_art_df.index))
+                          columns = str_idx)
 
     for i in range(len(hall_files)):
         name = hall_files[i].split("_students.csv")[0]
-        df = pd.read_csv("../data/filled_buildings/{}".format(
+
+        df = pd.read_csv(ROOT + "/data/filled_buildings/{}".format(
             hall_files[i]), index_col = 0)
         df.reset_index(drop = True, inplace = True)
 
@@ -238,7 +233,7 @@ def compute_cost_matrix(art_df,
                     columns = cat_quant)
         
         # Get quantized student dictionaries
-        quant_s = get_quantized_student_data(df,
+        quant_s = get_quantized_student_data(df, 
                         gender_map = mapping_dict["gender"], 
                         race_map = mapping_dict["race"], 
                         region_map = mapping_dict["region"])
@@ -300,17 +295,113 @@ def compute_cost_matrix(art_df,
        
         cost_df.loc[name,:] = art_prob
 
+    cost_df.columns = [", ".join(list(c)) for c in cost_df.columns]
+
     return cost_df
 
+def get_normalizing_constants(hall_df, student_df, art_df):
+    """ Return normalizing contstants for lambda and tau
 
-def learn_optimal_assignment(cost_df, building_capacity_df, art_capacity_df, current_assignment, lam, tau,init):
+    Input: 
+        hall_df: (dataframe) one-hot dataframe with halls as index, schools as columns
+        student_df: (dataframe) dataframe of students
+        art_df: (dataframe) art works with attributes
+        
+    Returns: 
+        Tuple with (norm_lam_factor, norm_tau_factor) which is used to scale
+        lambda and tau for grid search.
+    """    
+    # Compute building capacity
+    building_capacity_df = sc.get_building_capacity_df()
+    building_capacity =  building_capacity_df.values
+    num_buildings =  building_capacity_df.shape[0]
+    
+    # Compute art capacity
+    art_capacity_df = sc.get_art_capacity_with_downsampling(
+                                            student_df,
+                                            art_df,
+                                            categories = ["gender","race"]
+                                            )
+    art_capacity = art_capacity_df["capacity"].values
+
+    # Get current assignment
+    current_assignment_df = pd.read_csv(ROOT + "/data/current_assignment_df.csv", index_col = 0)
+    current_assignment = current_assignment_df.values
+
+    beta_values = np.array([10**-2,10**2, 10**8])
+    iterations = 50
+    term1 = np.zeros((beta_values.shape[0],iterations))
+    term2 = np.zeros((beta_values.shape[0],iterations))
+    term3 = np.zeros((beta_values.shape[0],iterations))
+    for m in range(beta_values.shape[0]):
+        # Compute full n_buildings x n_artworks cost matrix.
+        cost_df = sc.compute_cost_matrix(hall_df = hall_df,
+                                        student_df = student_df,
+                                        art_df = art_df,
+                                        categories = ["gender","race"],
+                                        alpha = -1,
+                                        beta = beta_values[m])
+        num_arts = cost_df.shape[1]
+        for k in range(iterations):
+            # Pick a random permutation in S
+            P = sample_general_simplex(n_rows = num_buildings,
+                                    n_columns = num_arts,
+                                    capacity = building_capacity)  
+            term1[m,k] = np.trace(np.matmul(np.transpose(cost_df.values),P))
+            term2[m,k] = np.linalg.norm(np.sum(P,axis=0)-art_capacity)**2
+            term3[m,k] = np.linalg.norm(P-current_assignment)**2
+
+    term1_avg = np.mean(term1)
+    term2_avg = np.mean(term2)
+    term3_avg = np.mean(term3)
+
+    norm_lam_factor = term1_avg/term2_avg
+    norm_tau_factor = term1_avg/term3_avg
+    
+    return norm_lam_factor, norm_tau_factor
+
+def learn_optimal_assignment(hall_df, student_df, art_df, cost_df, lam, tau,init, iterations):
     """ Return n_buildings x n_artworkks assignment array
+
+    Input: 
+        hall_df: (dataframe) one-hot dataframe with halls as index, schools as columns
+        student_df: (dataframe) dataframe of students
+        art_df: (dataframe) art works with attributes
+        cost_df: (dataframe) cost dataframe typically computed with 
+            `compute_cost_matrix`.
+        lam: (float) lambda factor determines weight of artwork capacity 
+            constraints in optimization.
+        tau: (float) tau factor determines weight of preference for current 
+            assignment in optimization.
+        init: (int) one of the following: 
+                1 - identity matrix initialization
+                2 - uniform initialization
+                3 - current assignment initialization
+                4 - random permutation initialization
+        iterations: (int) number of iterations of gradient descent
+
+    Returns:
+        num_buildings x num_arts assignment dataframe where the entry in row n 
+        and column m is the copies of artwork m to by hung in building n.
     """
     C = cost_df.values
-    num_buildings = cost_df.shape[0]
-    num_arts = cost_df.shape[1]
-    building_capacity = building_capacity_df.values
+    
+    # Compute building capacity
+    building_capacity_df = sc.get_building_capacity_df()
+    building_capacity =  building_capacity_df.values
+    num_buildings =  building_capacity_df.shape[0]
+    
+    # Compute art capacity
+    art_capacity_df = sc.get_art_capacity_with_downsampling(
+                                student_df,
+                                art_df,
+                                categories = ["gender","race"])
     art_capacity = art_capacity_df["capacity"].values
+    num_arts = art_capacity_df.shape[0]
+
+    # Get current assignment
+    current_assignment_df = pd.read_csv(ROOT + "/data/current_assignment_df.csv", index_col = 0)
+    current_assignment = current_assignment_df.values
 
     dt = 0.5 * (1/((lam * num_buildings) + tau)) #step size
     t = np.arange(1,num_arts + 1)
@@ -325,24 +416,11 @@ def learn_optimal_assignment(cost_df, building_capacity_df, art_capacity_df, cur
     elif init==3:
         P = current_assignment
     else:
-        P = sample_general_simplex(num_buildings,num_arts,building_capacity)
-        #P = np.random.randn(num_buildings,num_arts)
-        # Projection
-        #for i in range(num_buildings):
-        #    v = P[i,:]
-        #    if np.all(v>0):
-        #        v = v/np.sum(v)
-        #        P[i]=v * building_capacity[i]
-        #    else:
-        #        mu = v[np.argsort(-v)]
-        #        tmp = (np.cumsum(mu) - building_capacity[i])/t
-        #        K = np.argwhere(tmp < mu)[-1][0] + 1
-        #        theta = (np.sum(mu[:K]) - building_capacity[i]) / (K)
-        #        P[i,:] =  np.maximum(P[i,:]-theta,0)
-    energy = np.zeros((10,1))
-    print(energy[2])
-    for k in range(10):
-        print(k)
+        P = sample_general_simplex(n_rows = num_buildings,
+                                n_columns = num_arts,
+                                 capacity = building_capacity)
+    energy = np.zeros((iterations,1))
+    for k in range(iterations):
         # Gradient descent.
         term2b = np.matmul(ones_vector,np.matmul(np.transpose(ones_vector),P
                           )-np.transpose(art_capacity))
@@ -365,10 +443,21 @@ def learn_optimal_assignment(cost_df, building_capacity_df, art_capacity_df, cur
         energy2 = 0.5*lam*np.linalg.norm(np.sum(P,axis=0)-art_capacity)**2
         energy3 = 0.5*tau*np.linalg.norm(P-current_assignment)**2
         energy[k] = energy1+energy2+energy3
-        print(energy[k])
 
-    return pd.DataFrame(P, index = cost_df.index,
+    # print energy to output file.
+    exists  = os.path.exists(ROOT + "/output")
+    if exists  == False:
+        os.mkdir(ROOT + "/output")
+
+    d = datetime.now().strftime("%Y%m%d%H%M%S")
+    filename = f"energy_df_{d}.csv"
+    pd.DataFrame(energy).to_csv(ROOT + "/output/" + filename)
+    logging.info(f"\n Energy printed to : ../output/{filename}")
+
+    assignment_df = pd.DataFrame(P, index = cost_df.index,
                    columns = art_capacity_df["string"].values)
+
+    return assignment_df
 
 
 def validate_assignment(assignment_df):
@@ -398,7 +487,7 @@ def validate_assignment(assignment_df):
         race_index, gender_index], columns = ["Optimized","Baseline","Total"])
 
     # Get current art locations and process dataframe.
-    art_loc_df = pd.read_csv("../data/2021_05_07_Artist_Subject_Donor_Data_v3.csv"
+    art_loc_df = pd.read_csv(ROOT + "/data/2021_05_07_Artist_Subject_Donor_Data_v3.csv"
                                             )[["OBJECTID","HOMELOC"]]
     art_df_with_loc = art_df.merge(art_loc_df, 
                                     left_on = "objectid",
@@ -413,7 +502,7 @@ def validate_assignment(assignment_df):
     
     # Iterative over buildings in question.
     for h in assignment_df.index:
-        building_df = pd.read_csv("../data/filled_buildings/{}_students.csv".format(h))
+        building_df = pd.read_csv(ROOT + "/data/filled_buildings/{}_students.csv".format(h))
         
         art_slice_df = art_df_with_loc[art_df_with_loc["loc"] == h]
         
@@ -446,22 +535,41 @@ def validate_assignment(assignment_df):
     
     return val_df[["Optimized","Baseline"]]
 
-# This script samples a matrix P of size N by M where P>=0 and P1 = h
-# In other words, each row of P, denoted by P_i lies in the general simplex
-# where (P_i)_j>=0 and sum_{j=1}^{M} (P_i) = h_i
-def sample_general_simplex(N,M,h):
-    P = np.zeros((N,M))
-    for i in range(N):
+def sample_general_simplex(n_rows,n_columns,capacity):
+    """ Samples matrix from general simplex. 
+
+    Inputs: 
+        n_rows: (int) number of rows
+        n_columns: (int) number of columns.
+        capacity: (array) capacity array n_rows X 1
+
+    Returns: 
+        Samples a matrix P of size N by M where P>=0 and P1 = h.  
+        n other words, each row of P, denoted by P_i lies in the 
+        general simplex, where (P_i)_j>=0 and sum_{j=1}^{M} (P_i) = h_i
+    """
+    P = np.zeros((n_rows,n_columns))
+    for i in range(n_rows):
         init_sum = 0
-        for j in range(M-1):
+        for j in range(n_columns-1):
             phi = np.random.uniform(0,1)
-            P[i,j] =(1-init_sum)*(1-np.power(phi,1/(M-j-1))) 
+            P[i,j] =(1-init_sum)*(1-np.power(phi,1/(n_columns-j-1))) 
             init_sum = init_sum+ P[i,j]
-        P[i,M-1]  = 1- init_sum
-        P[i,:] = np.multiply(P[i,:],h[i])
+        P[i,n_columns-1]  = 1- init_sum
+        P[i,:] = np.multiply(P[i,:],capacity[i])
     return P
 
 def baseline_average_value(category = "gender", in_group = "Man"):
+    """ Set baseline average value for validation
+
+    Inputs:
+        category: (str) "gender" or "race"
+        in_group: (str) member of cateogry to be considered in "in-group"
+
+    Returns: 
+        Tuple where first term is average representation for in-group, and the 
+        second term is the average representation in the non-in-group.
+    """
     # Load data
     hall_df, student_df, art_df = load_data()
     df = pd.DataFrame(np.nan,index = student_df["student_id"].values,
@@ -469,7 +577,7 @@ def baseline_average_value(category = "gender", in_group = "Man"):
     in_index = []
     out_index = []
     for h in hall_df.index:
-        df_h = pd.read_csv("../data/filled_buildings/{}_students.csv".format(h), index_col = 0)
+        df_h = pd.read_csv(ROOT + "/data/filled_buildings/{}_students.csv".format(h), index_col = 0)
         # set value to 1 if student goes through building.
         df.loc[df_h["student_id"].values,h] = 1
     
@@ -499,6 +607,16 @@ def baseline_average_value(category = "gender", in_group = "Man"):
     return in_expected, out_expected
 
 def optimized_average_value(assignment_df, category = "gender", in_group = "Man"):
+    """ Get optimized average value for validation
+
+    Inputs:
+        category: (str) "gender" or "race"
+        in_group: (str) member of cateogry to be considered in "in-group"
+
+    Returns: 
+        Tuple where first term is average representation for in-group, and the 
+        second term is the average representation in the non-in-group.
+    """
     # Load data
     hall_df, student_df, art_df = load_data()
     df = pd.DataFrame(np.nan,index = student_df["student_id"].values,
@@ -506,7 +624,7 @@ def optimized_average_value(assignment_df, category = "gender", in_group = "Man"
     in_index = []
     out_index = []
     for h in hall_df.index:
-        df_h = pd.read_csv("../data/filled_buildings/{}_students.csv".format(h), index_col = 0)
+        df_h = pd.read_csv(ROOT + "/data/filled_buildings/{}_students.csv".format(h), index_col = 0)
         # set value to 1 if student goes through building.
         df.loc[df_h["student_id"].values,h] = 1
     
@@ -536,75 +654,106 @@ def optimized_average_value(assignment_df, category = "gender", in_group = "Man"
     return in_expected, out_expected
 
 
-def run_art_assignment(method, alpha, lam):
-    
+def run_art_assignment(beta, lam, tau, init, iterations):
+    """
+    Input: 
+        beta: (float) beta factor determines weight of the diversity 
+            objectives in the optimization (i.e. "term 1").
+        lam: (float) lambda factor determines weight of artwork capacity 
+            constraints in optimization (i.e. "term 2").
+        tau: (float) tau factor determines weight of preference for current 
+            assignment in optimization (i.e. "term 3").
+        init: (int) one of the following: 
+                1 - identity matrix initialization
+                2 - uniform initialization
+                3 - current assignment initialization
+                4 - random permutation initialization
+        iterations: (int) number of iterations of gradient descent
+    Returns:
+        num_buildings x num_arts assignment dataframe where the entry in row n 
+        and column m is the copies of artwork m to by hung in building n.
+    """
+
     # Load mappings
     gender_map, race_map, region_map = get_mapping_dicts()
 
     # Load data
     hall_df, student_df, art_df = load_data()
 
-    # Get quantized student data.
-    gender_quant_s, race_quant_s, region_quant_s = get_quantized_student_data(    
-                                                        student_df,
-                                                        gender_map, 
-                                                        race_map, 
-                                                        region_map)
+    # Compute building capacity
+    building_capacity_df = sc.get_building_capacity_df()
+    building_capacity =  building_capacity_df.values
 
-    # Get quantized  art data.
-    gender_quant_a, race_quant_a, region_quant_a = get_quantized_art_data(    
-                                                        art_df,
-                                                        gender_map, 
-                                                        race_map, 
-                                                        region_map)
-
-    # Get building capacity column vector.
-    building_capacity = get_building_capacity_df().values
+    # Compute art capacity
+    art_capacity_df = sc.get_art_capacity_with_downsampling(
+                            student_df,
+                            art_df,
+                            categories = ["gender","race"]
+                            )
+    art_capacity = art_capacity_df["capacity"].values
 
     logging.info("\n Computing cost matrix...")
+    logging.info(f"\n beta = {beta}")
 
     # Compute full n_buildings x n_artworks cost matrix.
     cost_df = compute_cost_matrix(art_df = art_df, 
-                                        hall_df = hall_df, 
-                                        gender_quant_s = gender_quant_s, 
-                                        race_quant_s = race_quant_s, 
-                                        region_quant_s = region_quant_s, 
-                                        gender_quant_a = gender_quant_a, 
-                                        race_quant_a = race_quant_a, 
-                                        region_quant_a = region_quant_a, 
-                                        alpha = -1)
+                                        hall_df = hall_df,
+                                        categories = ["gender","race"],
+                                        alpha = -1,
+                                        beta = beta)
 
-    if method == "assign_with_downsampling":
-        art_capacity_df = get_art_capacity_with_downsampling(art_df)
+    # Reduce cost df to remove duplicate columns.
+    cost_df = cost_df.rename(columns = {art_capacity_df.loc[i,"tuple"
+        ]:art_capacity_df.loc[i,"string"] for i in art_capacity_df.index})
 
-        # Reduce cost df to remove duplicate columns.
-        art_capacity = art_capacity_df["capacity"].values.reshape(-1,1)
+    # Compute normalizing constants for lambda and tau
+    norm_lam_factor, norm_tau_factor = get_normalizing_constants(art_df, hall_df)
 
-        cost_df = cost_df.loc[:,art_capacity_df["original_index"].values]
-        
-        logging.info("\n Learning optimal assignment...")
+    logging.info("\n Computing assignment matrix...")
+    logging.info(f"\n lambda = {lam}, tau = {tau}, init = {init}")
 
-        P = learn_optimal_assignment(cost_df, 
-                                    building_capacity, 
-                                    art_capacity, 
-                                    lam)
-        
-        # Check that assignment numbers are sufficiently close to building capacity.
-        assert np.all(np.sum(P, axis = 1) - building_capacity.reshape(
-                                                                1,-1) < 1e-10)
+    # Compute assignment matrix
+    assignment_df = learn_optimal_assignment(
+                            hall_df = hall_df, 
+                            student_df = student_df,
+                            art_df = art_df,
+                            cost_df = cost_df, 
+                            lam = norm_lam_factor*lam, 
+                            tau=norm_tau_factor*tau,
+                            init = init,
+                            iterations = iterations
+                             ) 
 
-        # Convert the assignment array to a dataframe for readability.
-        assignment_df = pd.DataFrame(P, index = cost_df.index,
-                          columns = art_capacity_df["tuples"].values)
+    # Check that assignment numbers are sufficiently close to building capacity.
+    assert np.all(assignment_df.sum(axis = 1).values.reshape(-1,1) - 
+                                building_capacity_df.values.reshape(-1,1) < 1e-08)
 
-        return assignment_df
+    # Print outpout to file.
+    exists  = os.path.exists(ROOT + "/output")
+    if exists  == False:
+        os.mkdir(ROOT + "/output")
 
-    else:
-        raise NotImplementedError("This is in progress...")
+    d = datetime.now().strftime("%Y%m%d%H%M%S")
+    suffix = f"{beta}_{lam}_{tau}_{init}_{d}.csv"
+    assignment_df.to_csv(f"{ROOT}/output/assignment_df_{suffix}")
+    cost_df.to_csv(f"{ROOT}/output/cost_df_{suffix}")
+
+    logging.info(f"\n Cost matrix printed to: {ROOT}/output/cost_df_{suffix}")
+    logging.info(f"\n Assignment matrix printed to: {ROOT}/output/assignment_df_{suffix}")
+
+    return assignment_df
+
 
 if __name__ == "__main__":
 
-    method = sys.argv[1]
-    alpha = sys.argv[2]
-    lam = sys.argv[3]
-    run_art_assignment(method, alpha, lam)
+    beta = int(sys.argv[1])
+    lam = int(sys.argv[2])
+    tau = int(sys.argv[3])
+    init = int(sys.argv[4])
+
+    try:
+        iterations = int(sys.argv[5])
+    except: 
+        iterations = 1000
+
+    run_art_assignment(beta, lam, tau, init, iterations)
