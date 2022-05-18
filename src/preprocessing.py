@@ -5,6 +5,7 @@ import pdfplumber
 import json 
 import os
 import sys
+import itertools
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -456,42 +457,80 @@ def process_student_dataframe():
     df_totals.to_csv(ROOT + "/data/Tufts_2021_Fall_Enrollment_Calculator_Data.csv")
     return df_totals
 
-if __name__ == "__main__":
+def get_categorical_indices(student_df, categories = ["gender","race"]):
+    """ Returns list indices for categorical values
     
-    logging.info("\n Processing art dataframe...")
-    data = process_art_dataframe()
-    data = data[data["loc"] != "crozier_fine_arts"]
-    data = data[(data["gender"] != "Unreported")&(data["race"] != "Unreported")]
-
-    halls = data["loc"].unique()
-    halls.sort()
-
-    # Populate current assignment dataframe.
+    Input: 
+        student_df: (dataframe) dataframe of students
+        categories: (list of strings) list containing "gender" or "race".
+    
+    Output:
+        Tuple of (enumeration index, string index)
+    """
+    # Load mappings
     mappings = sc.get_mapping_dicts()
     mapping_dict = {"gender":mappings[0],
                    "race":mappings[1],
                    "region":mappings[2]}
-    col_index = [f"Woman, {k}" for k in mapping_dict["race"].keys() if k!= "Unreported"
-                ] + [f"Man, {k}" for k in mapping_dict["race"].keys() if k!= "Unreported"]
-    current_assignment_df = pd.DataFrame(0, index = halls, columns = col_index)
-    loc_group = data.groupby("loc")
-    for hall, df in loc_group:
-        gender_group = df.groupby("gender")
-        for gender, gdf in gender_group:
-            for k, v in gdf["race"].value_counts().to_dict().items():
-                current_assignment_df.loc[hall,f"{gender}, {k}"] = v
-    current_assignment_df.to_csv(ROOT + "/data/current_assignment_df.csv")
+
+    cat_enum = [f"{c}_enum" for c in categories]
+    string_index = []
+    enum_index = []
+
+    list_of_str_lists = []
+    list_of_enum_lists = []
+    for c in categories:
+        list_of_str_lists.append(list(mapping_dict[c].keys()))
+        list_of_enum_lists.append(list(mapping_dict[c].values()))
+
+    str_idx = list(itertools.product(*list_of_str_lists))
+    stu_idx = [tuple(s) for s in student_df.drop_duplicates(categories)[categories].values]
+    str_idx = [s for s in str_idx if s in stu_idx and s[1] != "Unreported"]
+
+    enum_idx = list(itertools.product(*list_of_enum_lists))
+    stu_idx = [tuple(s) for s in student_df.drop_duplicates(categories)[cat_enum].values]
+    enum_idx = [s for s in enum_idx if s in stu_idx and s[1] != 0]
+
+    return enum_idx, str_idx
+
+if __name__ == "__main__":
+    
+    logging.info("\n Processing art dataframe...")
+    art_data = process_art_dataframe()
+    art_data = art_data[art_data["loc"] != "crozier_fine_arts"]
+    halls = art_data["loc"].unique()
+    halls.sort()
 
     logging.info("\n Processing student dataframe...")
     process_student_dataframe()
-    sc.get_student_enrollment_data()
+    student_df = sc.get_student_enrollment_data()
 
+    # Check if current_assignment_df exists, and if not, create it.
+    exists  = os.path.exists(ROOT + "/data/current_assignment_df.csv")
+    if exists == False:
+        enum_idx, str_idx = sc.get_categorical_indices(student_df = student_df, 
+                        categories = ["gender","race"])
+        reduced_art_data = art_data[(art_data["gender"] != "Unreported"
+                                    )&(art_data["race"] != "Unreported")]
+        mappings = sc.get_mapping_dicts()
+        mapping_dict = {"gender":mappings[0],
+                       "race":mappings[1],
+                       "region":mappings[2]}
+        col_index = [", ".join(c) for c in str_idx]
+        current_assignment_df = pd.DataFrame(0, index = halls, columns = col_index)
+        loc_group = reduced_art_data.groupby("loc")
+        for hall, hall_df in loc_group:
+            gender_group = hall_df.groupby("gender")
+            for gender, g_df in gender_group:
+                for k, v in g_df["race"].value_counts().to_dict().items():
+                    current_assignment_df.loc[hall,f"{gender}, {k}"] = v
+        current_assignment_df.to_csv(ROOT + "/data/current_assignment_df.csv")
+
+    # Check if hall_dict.json exists, and if not, create it.
     exists  = os.path.exists(ROOT + "/data/hall_dict.json")
     if exists  == False:
         logging.info("\n Scaping hall data, this requires a network connection and takes a few moments...")
-        data = data[data["loc"] != "crozier_fine_arts"]
-        halls = data["loc"].unique()
-        halls.sort()
+        
         hall_dict = {}
         for hall in halls:
             hall_dict[hall] = sc.get_hall_dict(hall)

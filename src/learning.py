@@ -83,7 +83,7 @@ def get_quantized_art_data(art_df, gender_map, race_map, region_map):
         art_df: (dataframe) dataframe of artworks.
         gender_map: (dict) mapping of gender strings to enum
         race_map: (dict) mapping of race strings to enum
-        regin_map: (dict) mapping of region strings to enum
+        region_map: (dict) mapping of region strings to enum
 
     Output: 
         Dictionary of quantized art enumeration values.
@@ -135,40 +135,22 @@ def get_art_capacity_with_downsampling(art_df, categories = ["gender","race"]):
         the collection).
     """
     cat_enum = ["{}_enum".format(c) for c in categories]
-    
-    df = art_df.copy()
-    for c in cat_enum:
-        df = df[df[c] != 0]
-        
-    art_tuple_series = pd.Series([tuple(v) for v in df[cat_enum].values], 
-                            index = df.index)
 
-    art_string_series = pd.Series([", ".join(v) for v in df[categories].values], 
-                            index = df.index)
-    
-    art_tuple_dict = art_tuple_series.value_counts().to_dict()
+    # Get current assignment
+    current_assignment_df = pd.read_csv(ROOT + "/data/current_assignment_df.csv", index_col = 0)
+    current_assignment = current_assignment_df.values
     
     # Initialize empty dataframe
     art_capacity_df = pd.DataFrame()
-    art_capacity_df["tuple"] = art_tuple_series.values
-    art_capacity_df["string"] = art_string_series.values
-    art_capacity_df["original_index"] = list(art_tuple_series.index)
-
-    art_capacity_df.sort_values(by = "tuple", ascending = True, inplace = True)
-    art_capacity_df.reset_index(drop = True, inplace = True)
-    
-    # Add capacity from art_tuple_dict.
-    for i in art_capacity_df.index:
-        art_capacity_df.loc[i,"capacity"] = art_tuple_dict[
-                                    art_capacity_df.loc[i,"tuple"]]    
-
-    # Drop duplicate values.
-    art_capacity_df.drop_duplicates(subset = ["tuple"], keep = "first", 
-        inplace = True)
-    art_capacity_df.reset_index(drop = True, inplace = True)
+    art_capacity_df["string"] = current_assignment_df.sum(axis = 0).index
+    art_capacity_df["capacity"] = current_assignment_df.sum(axis = 0).values
 
     # Assert that all art pieces are being counted.
-    assert art_capacity_df.loc[:,"capacity"].sum() == df.shape[0]
+    art_on_view = art_df[(art_df["loc"] != "crozier_fine_arts")&(
+                        art_df["gender"] != "Unreported")&(
+                        art_df["race"] != "Unreported")]
+
+    assert art_capacity_df.loc[:,"capacity"].sum() == art_on_view.shape[0]
 
     # Clip capacity at 100 to prevent overuse.
     art_capacity_df["capacity"] = art_capacity_df["capacity"].clip(upper = 100)
@@ -176,8 +158,10 @@ def get_art_capacity_with_downsampling(art_df, categories = ["gender","race"]):
     return art_capacity_df
 
 
-def compute_cost_matrix(art_df, 
+def compute_cost_matrix(
                 hall_df,
+                student_df,
+                art_df,
                 categories = ["gender","race"],
                 alpha = -1,
                 beta = 100):
@@ -185,8 +169,9 @@ def compute_cost_matrix(art_df,
     Return dataframe with columns "tuple","original_index","capacity".
 
     Input:
-        art_df: (dataframe) art works with attributes
         hall_df: (dataframe) one-hot dataframe with halls as index, schools as columns
+        student_df: (dataframe) dataframe of students
+        art_df: (dataframe) art works with attributes
         categories: (list of strings) list containing "gender" or "race".
         alpha: (float) model parameter determining outlier importance.
         beta: (float) model parameter determining art rep. importance.
@@ -198,12 +183,15 @@ def compute_cost_matrix(art_df,
     cat_enum = ["{}_enum".format(c) for c in categories]
     cat_quant = ["{}_quant".format(c) for c in categories]
 
-    # Drop rows from art_df where category value is unreported.
-    new_art_df = art_df.copy()
-    for c in cat_enum:
-        new_art_df = new_art_df[new_art_df[c] != 0]
-    new_art_df.reset_index(drop = True, inplace = True)
+    # Get current assignment
+    current_assignment_df = pd.read_csv(ROOT + "/data/current_assignment_df.csv", 
+        index_col = 0)
+    current_assignment = current_assignment_df.values
     
+    # Get relevant index values
+    enum_idx, str_idx = sc.get_categorical_indices(student_df = student_df, 
+        categories = ["gender","race"])
+
     # Check that the filled building data is available.
     my_path = ROOT + "/data/filled_buildings/"
     hall_files = ["{}_students.csv".format(f) for f in hall_df.index]
@@ -217,9 +205,15 @@ def compute_cost_matrix(art_df,
     mapping_dict = {"gender":mappings[0],
                    "race":mappings[1],
                    "region":mappings[2]}
+    
+    # Drop rows from art_df where category value is unreported.
+    reduced_art_df = art_df.copy()
+    for c in cat_enum:
+        reduced_art_df = reduced_art_df[reduced_art_df[c] != 0]
+    reduced_art_df.reset_index(drop = True, inplace = True)
 
     # Get quantized artwork dictionaries and reduced dataframe.
-    quant_a = get_quantized_art_data(new_art_df,
+    quant_a = get_quantized_art_data(reduced_art_df,
                         gender_map = mapping_dict["gender"], 
                         race_map = mapping_dict["race"], 
                         region_map = mapping_dict["region"])
@@ -228,20 +222,24 @@ def compute_cost_matrix(art_df,
                    "race":quant_a[1]
                    }
 
+    # Create new art data frame with strings, enums, and quants.
+    enum_df = pd.DataFrame(enum_idx, columns = [f"{c}_enum" for c in categories])
+    str_df = pd.DataFrame(str_idx, columns = [f"{c}" for c in categories])
+    new_art_df = str_df.join(enum_df)
+
     for c in categories:
         new_art_df["{}_quant".format(c)] = new_art_df["{}_enum".format(c)].map(quant_a_dict[c])
         
-    new_art_df["tuple"] = [tuple(v) for v in new_art_df[cat_enum].values]
-    new_art_df.sort_values(by = "tuple", inplace = True)
-    new_art_df = new_art_df.drop_duplicates(subset = ["tuple"])
-    new_art_df.set_index("tuple", drop = True, inplace = True)
+    new_art_df.replace(0,1e-08, inplace = True) # To avoid divbyzero errors
     df_quant_a = new_art_df[cat_quant]
-    
+
     # Initialize empty dataframe
     cost_df = pd.DataFrame(index = hall_df.index,
-                          columns = list(new_art_df.index))
+                          columns = str_idx)
+
     for i in range(len(hall_files)):
         name = hall_files[i].split("_students.csv")[0]
+
         df = pd.read_csv(ROOT + "/data/filled_buildings/{}".format(
             hall_files[i]), index_col = 0)
         df.reset_index(drop = True, inplace = True)
@@ -315,14 +313,17 @@ def compute_cost_matrix(art_df,
        
         cost_df.loc[name,:] = art_prob
 
+    cost_df.columns = [", ".join(list(c)) for c in cost_df.columns]
+
     return cost_df
 
-def get_normalizing_constants(art_df, hall_df):
+def get_normalizing_constants(hall_df, student_df, art_df):
     """ Return normalizing contstants for lambda and tau
 
     Input: 
-        art_df: (dataframe) art works with attributes
         hall_df: (dataframe) one-hot dataframe with halls as index, schools as columns
+        student_df: (dataframe) dataframe of students
+        art_df: (dataframe) art works with attributes
         
     Returns: 
         Tuple with (norm_lam_factor, norm_tau_factor) which is used to scale
@@ -348,8 +349,9 @@ def get_normalizing_constants(art_df, hall_df):
     term3 = np.zeros((beta_values.shape[0],10))
     for m in range(beta_values.shape[0]):
         # Compute full n_buildings x n_artworks cost matrix.
-        cost_df = sc.compute_cost_matrix(art_df = art_df, 
-                                        hall_df = hall_df,
+        cost_df = sc.compute_cost_matrix(hall_df = hall_df,
+                                        student_df = student_df,
+                                        art_df = art_df,
                                         categories = ["gender","race"],
                                         alpha = -1,
                                         beta = beta_values[m])
