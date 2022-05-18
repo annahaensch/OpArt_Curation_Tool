@@ -102,30 +102,20 @@ def get_building_capacity_df():
     """
     Return dataframe of art capacity by building.
     """
-    try:
-        art_df = pd.read_csv(ROOT + "/data/art_data_cleaned.csv", 
+    # Get current assignment
+    current_assignment_df = pd.read_csv(ROOT + "/data/current_assignment_df.csv", 
         index_col = 0)
-    except:
-        art_df = process_art_dataframe()
-        
-
-    # Remove art in storage.
-    art_df = art_df[art_df["loc"] != "crozier_fine_arts"].copy()
-
-    building_dict = art_df["loc"].value_counts().to_dict()
-
-    building_df = pd.DataFrame([v for v in building_dict.values()
-        ], index = building_dict.keys(), columns = ["capacity"])
-    building_df.sort_index(inplace = True)
+    current_assignment = current_assignment_df.values
     
-    return building_df
+    return pd.DataFrame(current_assignment_df.sum(axis = 1), columns = ["capacity"])
 
 
-def get_art_capacity_with_downsampling(art_df, categories = ["gender","race"]):
+def get_art_capacity_with_downsampling(student_df, art_df, categories = ["gender","race"]):
     """
     Return dataframe with columns "tuple","original_index","capacity".
 
     Input:
+        student_df: (dataframe) dataframe of students
         art_df: (dataframe) art works with attributes
         categories: (list of strings) list containing "gender" or "race".
 
@@ -134,24 +124,16 @@ def get_art_capacity_with_downsampling(art_df, categories = ["gender","race"]):
         and artwork type capacity (i.e. how many works of the given type exist in
         the collection).
     """
-    cat_enum = ["{}_enum".format(c) for c in categories]
-
-    # Get current assignment
-    current_assignment_df = pd.read_csv(ROOT + "/data/current_assignment_df.csv", index_col = 0)
-    current_assignment = current_assignment_df.values
+    enum_idx, str_idx = sc.get_categorical_indices(student_df = student_df, 
+                        categories = categories)
     
-    # Initialize empty dataframe
-    art_capacity_df = pd.DataFrame()
-    art_capacity_df["string"] = current_assignment_df.sum(axis = 0).index
-    art_capacity_df["capacity"] = current_assignment_df.sum(axis = 0).values
-
-    # Assert that all art pieces are being counted.
-    art_on_view = art_df[(art_df["loc"] != "crozier_fine_arts")&(
-                        art_df["gender"] != "Unreported")&(
-                        art_df["race"] != "Unreported")]
-
-    assert art_capacity_df.loc[:,"capacity"].sum() == art_on_view.shape[0]
-
+    art_capacity_df = pd.DataFrame(index = enum_idx)
+    art_capacity_df["string"] = [", ".join(s) for s in str_idx]
+    capacities = []
+    for i in str_idx:
+        capacities.append(np.sum([int(tuple(v) == i) for v in art_df[categories].values]))
+    art_capacity_df["capacity"] = capacities
+    
     # Clip capacity at 100 to prevent overuse.
     art_capacity_df["capacity"] = art_capacity_df["capacity"].clip(upper = 100)
 
@@ -335,8 +317,11 @@ def get_normalizing_constants(hall_df, student_df, art_df):
     num_buildings =  building_capacity_df.shape[0]
     
     # Compute art capacity
-    art_capacity_df = sc.get_art_capacity_with_downsampling(art_df,
-                    categories = ["gender","race"])
+    art_capacity_df = sc.get_art_capacity_with_downsampling(
+                                            student_df,
+                                            art_df,
+                                            categories = ["gender","race"]
+                                            )
     art_capacity = art_capacity_df["capacity"].values
 
     # Get current assignment
@@ -374,11 +359,12 @@ def get_normalizing_constants(hall_df, student_df, art_df):
     
     return norm_lam_factor, norm_tau_factor
 
-def learn_optimal_assignment(hall_df, art_df, cost_df, lam, tau,init, iterations):
+def learn_optimal_assignment(hall_df, student_df, art_df, cost_df, lam, tau,init, iterations):
     """ Return n_buildings x n_artworkks assignment array
 
     Input: 
         hall_df: (dataframe) one-hot dataframe with halls as index, schools as columns
+        student_df: (dataframe) dataframe of students
         art_df: (dataframe) art works with attributes
         cost_df: (dataframe) cost dataframe typically computed with 
             `compute_cost_matrix`.
@@ -405,8 +391,10 @@ def learn_optimal_assignment(hall_df, art_df, cost_df, lam, tau,init, iterations
     num_buildings =  building_capacity_df.shape[0]
     
     # Compute art capacity
-    art_capacity_df = sc.get_art_capacity_with_downsampling(art_df,
-                    categories = ["gender","race"])
+    art_capacity_df = sc.get_art_capacity_with_downsampling(
+                                student_df,
+                                art_df,
+                                categories = ["gender","race"])
     art_capacity = art_capacity_df["capacity"].values
     num_arts = art_capacity_df.shape[0]
 
@@ -696,8 +684,11 @@ def run_art_assignment(beta, lam, tau, init, iterations):
     building_capacity =  building_capacity_df.values
 
     # Compute art capacity
-    art_capacity_df = sc.get_art_capacity_with_downsampling(art_df,
-                    categories = ["gender","race"])
+    art_capacity_df = sc.get_art_capacity_with_downsampling(
+                            student_df,
+                            art_df,
+                            categories = ["gender","race"]
+                            )
     art_capacity = art_capacity_df["capacity"].values
 
     logging.info("\n Computing cost matrix...")
@@ -723,6 +714,7 @@ def run_art_assignment(beta, lam, tau, init, iterations):
     # Compute assignment matrix
     assignment_df = learn_optimal_assignment(
                             hall_df = hall_df, 
+                            student_df = student_df,
                             art_df = art_df,
                             cost_df = cost_df, 
                             lam = norm_lam_factor*lam, 
