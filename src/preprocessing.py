@@ -414,7 +414,7 @@ def process_art_dataframe():
                     "race_enum",
                     "region_enum"
                     ]
-    art_df[col_of_interest].to_csv(ROOT + "/data/2022_03_04_art_data_cleaned.csv")
+    art_df[col_of_interest].to_csv(ROOT + "/data/art_data_cleaned.csv")
     return art_df[col_of_interest]
 
 
@@ -465,8 +465,7 @@ if __name__ == "__main__":
 
     exists  = os.path.exists(ROOT + "/data/hall_dict.json")
     if exists  == False:
-        logging.info("\n Scaping hall data, the requries network connection and takes a few moments...")
-        data = process_art_dataframe()
+        logging.info("\n Scaping hall data, this requires a network connection and takes a few moments...")
         data = data[data["loc"] != "crozier_fine_arts"]
         halls = data["loc"].unique()
         halls.sort()
