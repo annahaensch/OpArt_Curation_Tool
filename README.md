@@ -58,7 +58,7 @@ runs the optimization with beta = 1, lambda = 100, tau = 1, init = 1 and iterati
 
 To help you on your way, several notebooks have been provided in `notebooks` that contains demo workflows for the OpArt library.  
 
-* `workflow_demo` demonstrates the basic work flow from running and validating an optimization.
-* `spectral_embedding_demo` recreates the spectral embeddings in *A Recommender System for Equitable Public Art Curation and Installation*.
+* `workflow_demo.ipynb` demonstrates the basic work flow from running and validating an optimization.
+* `recreate_results_from_paper.ipynb` recreates the results in *A Recommender System for Equitable Public Art Curation and Installation*.
 
 
