@@ -5,7 +5,7 @@ set -ex # fail on first error, print commands
 SRC_DIR=${SRC_DIR:-$(pwd)}
 
 echo "Checking code style with black..."
-python -m black --line-length 100 --check "${SRC_DIR}"/src/
+python -m black --line-length 100 --diff "${SRC_DIR}"/src/
 echo "Success!"
 
 echo "Type checking with mypy..."
