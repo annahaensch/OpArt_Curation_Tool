@@ -6,4 +6,4 @@ jobs:
     steps:
       - name: Install Dependencies
         run: |
-          ls ${{ github.workspace }}
+          python -m pip install --upgrade pip
