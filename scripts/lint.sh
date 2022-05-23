@@ -9,7 +9,7 @@ python -m black --line-length 100 "${SRC_DIR}"/src/
 echo "Success!"
 
 echo "Type checking with mypy..."
-mypy --ignore-missing-imports src
+mypy --ignore-missing-imports "${SRC_DIR}"/src/
 echo "Success!"
 
 echo "Checking code style with pylint..."
