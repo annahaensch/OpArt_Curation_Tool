@@ -1,25 +1,23 @@
-import pandas as pd
-import numpy as np
+"""Visualization tools for OpArt Library."""
 
-import os
-import sys
 
+import json
+import math
 import matplotlib.pyplot as plt
-import numpy.ma as ma
+
+import numpy as np
+import pandas as pd
+
+from numpy import ma
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-
-ROOT = os.popen("git rev-parse --show-toplevel").read().split("\n")[0]
-sys.path.append(ROOT)
-
-import src as sc
 import geopandas
 import contextily as ctx
-import json
 
-from os import listdir
-from os.path import isfile, join
-import math
+
+
+import src as sc
+
 
 COLOR_MAP = {
     "light_orange": "#E69F00",
@@ -38,10 +36,10 @@ COLOR_MAP = {
 def assignment_heatmat(assignment_df):
     """Returns heatmap of art/building assignment probabilities."""
     fig, ax = plt.subplots(figsize=(10, 12))
-    P = assignment_df.values
+    assignment = assignment_df.values
 
     # Create masked array to make 0 values transparent
-    data = np.array(P).transpose()
+    data = np.array(assignment).transpose()
     data = np.array(data, dtype=float)
     data = ma.masked_invalid(np.where(data == 0, np.nan, data))
 
@@ -77,18 +75,18 @@ def campus_building_map():
     names = sc.hall_url_name_dict
 
     # Opening JSON file
-    f = open("../data/hall_dict.json")
-    hall_dict = json.load(f)
+    with open("../data/hall_dict.json","r", encoding="utf-8") as file:
+        hall_dict = json.load(file)
 
     # Load campus building detials.
     loc_df = pd.DataFrame(
         index=list(hall_dict.keys()), columns=["name", "hall_type", "longitude", "latitude"]
     )
-    for k, v in hall_dict.items():
-        loc_df.loc[k, "name"] = names[k]
-        loc_df.loc[k, "hall_type"] = v["hall_type"]
-        loc_df.loc[k, "longitude"] = v["longitude"]
-        loc_df.loc[k, "latitude"] = v["latitude"]
+    for key, val in hall_dict.items():
+        loc_df.loc[key, "name"] = names[key]
+        loc_df.loc[key, "hall_type"] = val["hall_type"]
+        loc_df.loc[key, "longitude"] = val["longitude"]
+        loc_df.loc[key, "latitude"] = val["latitude"]
 
     color_map = {
         "Academic Building": COLOR_MAP["light_blue"],
@@ -113,27 +111,29 @@ def campus_building_map():
     geo_df = geo_df.to_crs(epsg=3857)
 
     # Add color codings
-    c = [color_map[h] for h in geo_df["hall_type"]]
+    color = [color_map[h] for h in geo_df["hall_type"]]
 
     # Plot listings as points.
-    geo_df.plot(ax=ax, marker="o", markersize=50, c=c)
+    geo_df.plot(ax=ax, marker="o", markersize=50, c=color)
 
     # Add basemap behind geopandas plot.
     ctx.add_basemap(ax, zoom=17, alpha=0.4)
 
     # Annotate buildings of type "Other".
-    x = geo_df[geo_df["name"] == "Goddard Chapel"].geometry.x
-    y = geo_df[geo_df["name"] == "Goddard Chapel"].geometry.y
+    x_coord = geo_df[geo_df["name"] == "Goddard Chapel"].geometry.x
+    y_coord = geo_df[geo_df["name"] == "Goddard Chapel"].geometry.y
 
-    ax.annotate("Goddard Chapel", xy=(x, y), xytext=(-40, 7), textcoords="offset points")
+    ax.annotate("Goddard Chapel", xy=(x_coord, y_coord), xytext=(-40, 7),
+        textcoords="offset points")
 
-    x = geo_df[geo_df["name"] == "Gifford House"].geometry.x
-    y = geo_df[geo_df["name"] == "Gifford House"].geometry.y
+    x_coord = geo_df[geo_df["name"] == "Gifford House"].geometry.x
+    y_coord = geo_df[geo_df["name"] == "Gifford House"].geometry.y
 
-    ax.annotate("Gifford House", xy=(x, y), xytext=(-40, 7), textcoords="offset points")
+    ax.annotate("Gifford House", xy=(x_coord, y_coord), xytext=(-40, 7),
+        textcoords="offset points")
 
-    for k, v in color_map.items():
-        plt.scatter([], [], color=v, label=k)
+    for key, val in color_map.items():
+        plt.scatter([], [], color=val, label=key)
 
     # Turn off axes
     ax.set_axis_off()
@@ -156,20 +156,20 @@ def campus_building_map():
     geo_df = geo_df.to_crs(epsg=3857)
 
     # Add color codings
-    c = [color_map[h] for h in geo_df["hall_type"]]
+    color = [color_map[h] for h in geo_df["hall_type"]]
 
     # Plot listings as points.
-    geo_df.plot(ax=ax, marker="o", markersize=50, c=c)
+    geo_df.plot(ax=ax, marker="o", markersize=50, c=color)
 
     # Add Buffer
     pts = geopandas.GeoSeries(geo_df["geometry"])
     circles = pts.buffer(100)
     circles.plot(ax=ax, marker="o", markersize=50, alpha=0)
 
-    x = geo_df[geo_df["name"] == "School at the Museum of Fine Arts"].geometry.x
-    y = geo_df[geo_df["name"] == "School at the Museum of Fine Arts"].geometry.y
+    x_coord = geo_df[geo_df["name"] == "School at the Museum of Fine Arts"].geometry.x
+    y_coord = geo_df[geo_df["name"] == "School at the Museum of Fine Arts"].geometry.y
 
-    ax.annotate("SMFA", xy=(x, y), xytext=(-13, 7), textcoords="offset points")
+    ax.annotate("SMFA", xy=(x_coord, y_coord), xytext=(-13, 7), textcoords="offset points")
 
     # Add basemap behind geopandas plot.
     ctx.add_basemap(ax, zoom=17, alpha=0.4)
@@ -179,59 +179,61 @@ def campus_building_map():
     plt.show()
 
 
-def beeswarm_building_gender(demo_cat, title, building_list=list(sc.hall_short_name_dict.keys())):
+def beeswarm_building_gender(demo_cat, building_list=[]):
     """Returns beeswarm plot of counts by race and gender.
 
     Input:
         demo_cat: (string) "race" or "region"
-        title: (string)
         building_list: (list) string building names.
 
     Returns:
         Beeswarm style horizontal bar chart of total counts.
     """
     my_path = "../data/filled_buildings/"
-    hall_df, student_df, art_df = sc.load_data()
+    student_df = sc.get_student_enrollment_data()
+    hall_df = sc.get_hall_by_school_table()
+    if len(building_list) == 0:
+        building_list = list(hall_df.index)
 
     color_dict = {"Woman": "#c85194", "Man": "#f1db54", "Transgender": COLOR_MAP["teal"]}
 
-    n = int(math.ceil(len(building_list) ** (1 / 2)))
-    m = math.ceil(len(building_list) / n)
+    n_rows = int(math.ceil(len(building_list) ** (1 / 2)))
+    n_cols = math.ceil(len(building_list) / n_rows)
 
-    fig, ax = plt.subplots(n, m, figsize=(14, 18), sharex=True, sharey=True)
+    fig, ax = plt.subplots(n_rows, n_cols, figsize=(14, 18), sharex=True, sharey=True)
 
     y_labels = list(student_df[demo_cat].value_counts().keys())
 
-    for i in range(len(building_list)):
+    for idx, name in enumerate(building_list):
 
-        if m == 1:
-            axs = ax[i]
+        if n_cols == 1:
+            axs = ax[idx]
         else:
-            axs = ax[i // n, i % m]
+            axs = ax[idx // n_rows, idx % n_cols]
 
-        my_file = join(my_path, building_list[i] + "_students.csv")
-        name = sc.hall_short_name_dict.get(building_list[i], building_list[i])
+        my_file = my_path + name + "_students.csv"
+        name = sc.hall_short_name_dict.get(name, name)
 
-        df = pd.read_csv(my_file)
-        grouped_df = df.groupby(demo_cat)
+        building_df = pd.read_csv(my_file)
+        grouped_df = building_df.groupby(demo_cat)
 
         count_df = pd.DataFrame(0, index=y_labels, columns=["Transgender", "Woman", "Man"])
 
-        for y in df[demo_cat].unique():
-            gender_dict = grouped_df.get_group(y)["gender"].value_counts().to_dict()
+        for group in building_df[demo_cat].unique():
+            gender_dict = grouped_df.get_group(group)["gender"].value_counts().to_dict()
 
-            for k, v in gender_dict.items():
-                count_df.loc[y, k] = v
+            for key, val in gender_dict.items():
+                count_df.loc[group, key] = val
 
-        y = 0
+        y_tick_val = 0
         y_ticks = []
-        for idx in count_df.index:
+        for count_idx in count_df.index:
             for col in count_df.columns:
 
-                x_values = np.arange(count_df.loc[idx, col]) + np.random.normal(
-                    0, 10, count_df.loc[idx, col]
+                x_values = np.arange(count_df.loc[count_idx, col]) + np.random.normal(
+                    0, 10, count_df.loc[count_idx, col]
                 )
-                y_values = np.full(len(x_values), float(y))
+                y_values = np.full(len(x_values), float(y_tick_val))
                 y_values = y_values + np.random.normal(
                     0, 0.5, len(y_values)
                 )  # add gaussian jitter.
@@ -239,10 +241,10 @@ def beeswarm_building_gender(demo_cat, title, building_list=list(sc.hall_short_n
                 s_values = np.full(len(x_values), 5)  # set marker size.
 
                 axs.scatter(x_values, y_values, s=s_values, color=color_dict[col])
-                y = y + 1
+                y_tick_val = y_tick_val + 1
 
-            y_ticks.append(y - 1.5)
-            y = y + 0.75
+            y_ticks.append(y_tick_val - 1.5)
+            y_tick_val = y_tick_val + 0.75
         axs.set_title(name, fontsize=25)
 
         axs.set_yticks(y_ticks)
@@ -251,19 +253,19 @@ def beeswarm_building_gender(demo_cat, title, building_list=list(sc.hall_short_n
         axs.spines["right"].set_visible(False)
         axs.spines["top"].set_visible(False)
 
-    for j in range(i + 1, n**2):
-        if m > 1:
-            ax[j // n, j % m].axis("off")
+    for j in range(len(building_list), n_rows**2):
+        if n_cols > 1:
+            ax[j // n_rows, j % n_cols].axis("off")
 
     # add legend
-    if m == 1:
+    if n_cols == 1:
         axs = ax[0]
     else:
         axs = ax[0, 0]
     axs.scatter([], [], color="#f1db54", s=[12], label="Man")
     axs.scatter([], [], color="#c85194", s=[12], label="Woman")
     axs.scatter([], [], color=COLOR_MAP["teal"], s=[12], label="Transgender or Non-Binary")
-    handles, labels = axs.get_legend_handles_labels()
+    #handles, labels = axs.get_legend_handles_labels()
     plt.show()
 
 
@@ -273,11 +275,12 @@ def beeswarm_gender(demo_df, demo_cat, title="Total Count by Race and Gender"):
     Input:
         demo_df: (dataframe) student_df or art_df
         demo_cat: (string) "race" or "region"
+        title: (string) plot title.
 
     Returns:
         Beeswarm style horizontal bar chart of total counts.
     """
-    hall_df, student_df, art_df = sc.load_data()
+    student_df = sc.get_student_enrollment_data()
     y_labels = list(student_df[demo_cat].value_counts().to_dict().keys())
 
     color_dict = {"Woman": "#c85194", "Man": "#f1db54", "Transgender": COLOR_MAP["teal"]}
@@ -285,14 +288,14 @@ def beeswarm_gender(demo_df, demo_cat, title="Total Count by Race and Gender"):
     grouped_df = demo_df.groupby(demo_cat)
     count_df = pd.DataFrame(0, index=y_labels, columns=["Transgender", "Woman", "Man"])
 
-    for y in demo_df[demo_cat].unique():
-        gender_dict = grouped_df.get_group(y)["gender"].value_counts().to_dict()
+    for group in demo_df[demo_cat].unique():
+        gender_dict = grouped_df.get_group(group)["gender"].value_counts().to_dict()
 
-        for k, v in gender_dict.items():
-            count_df.loc[y, k] = v
+        for key, val in gender_dict.items():
+            count_df.loc[group, key] = val
 
     fig, ax = plt.subplots(figsize=(10, 7))
-    y = 0
+    y_tick_val = 0
     y_ticks = []
     for idx in count_df.index:
         for col in ["Transgender", "Woman", "Man"]:
@@ -300,16 +303,16 @@ def beeswarm_gender(demo_df, demo_cat, title="Total Count by Race and Gender"):
             x_values = np.arange(count_df.loc[idx, col]) + np.random.normal(
                 0, 10, count_df.loc[idx, col]
             )
-            y_values = np.full(len(x_values), float(y))
+            y_values = np.full(len(x_values), float(y_tick_val))
             y_values = y_values + np.random.normal(0, 0.5, len(y_values))  # add gaussian jitter.
 
             s_values = np.full(len(x_values), 5)  # set marker size.
 
             ax.scatter(x_values, y_values, s=s_values, color=color_dict[col])
-            y = y + 1
+            y_tick_val = y_tick_val + 1
 
-        y_ticks.append(y - 1.5)
-        y = y + 0.75
+        y_ticks.append(y_tick_val - 1.5)
+        y_tick_val = y_tick_val + 0.75
 
     ax.scatter([], [], color="#f1db54", s=[25], label="Man")
     ax.scatter([], [], color="#c85194", s=[25], label="Woman")
@@ -324,6 +327,6 @@ def beeswarm_gender(demo_df, demo_cat, title="Total Count by Race and Gender"):
     ax.spines["right"].set_visible(False)
     ax.spines["top"].set_visible(False)
 
-    plt.ylim(-0.5, y)
+    plt.ylim(-0.5, y_tick_val)
     plt.legend()
     plt.show()
