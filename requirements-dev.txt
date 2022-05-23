@@ -3,6 +3,7 @@
 #
 ##### developer requirements
 black
+black[jupyter]
 mypy
 pytest
 pytest-cov
