@@ -18,14 +18,10 @@ and activate your new environment, with
 ```
 conda activate opart_env
 ``` 
-Now you will need to install the necessary dependencies.  First you'll need to conda install `pip` and then install the remaining required Python libraries as follows.
+Now you will need to install the necessary dependencies and unpack the data.  This is done by executing the contents of the `Makefile`.  This is done from the top-level folder of the repository with
+
 ```
-conda install pip
-pip install -U -r requirements.txt
-```
-Now your environment should be set up to run anything in the OpArt library.  The last step before the library is ready, is to carry out some preprocesing to unpack the data in the repository and byuild the relevant dictionary.  This is conveniently set up to run as a Python script, and can be carried out from the command line.
-```
-python src/preprocessing.py
+make
 ```
 Now you're ready to use OpArt!
 
