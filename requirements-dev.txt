@@ -1,0 +1,10 @@
+#
+##### OpArt Curation Tool requirements-dev.txt
+#
+##### developer requirements
+black
+black[jupyter]
+mypy
+pytest
+pytest-cov
+pylint

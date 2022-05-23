@@ -5,6 +5,8 @@ SHELL := /bin/bash
 install_dependencies: 
 	conda install pip
 	pip install -U -r requirements.txt
+	mypy --install-types
 
+# Preprocess data
 preprocess_data:
 	python $(PYTHONPATH)/src/preprocessing.py
