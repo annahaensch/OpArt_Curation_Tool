@@ -4,5 +4,6 @@ jobs:
   Execute-Linter:
     runs-on: ubuntu-latest
     steps:
-      - run: |
-        python -m pip install --upgrade pip
+      - name: Install Dependencies
+        run: |
+          ls ${{ github.workspace }}
