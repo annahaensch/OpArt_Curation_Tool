@@ -12,6 +12,7 @@ echo "Type checking with mypy..."
 mypy --ignore-missing-imports "${SRC_DIR}"/src/
 echo "Success!"
 
+# TODO: add pylint back into linter.
 #echo "Checking code style with pylint..."
 #python -m pylint "${SRC_DIR}"/src/
 #echo "Success!"
