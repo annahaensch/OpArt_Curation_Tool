@@ -11,7 +11,7 @@ from setuptools.command.develop import develop
 PROJECT_ROOT = os.path.dirname(os.path.realpath(__file__))
 REQUIREMENTS_FILE = os.path.join(PROJECT_ROOT, "requirements.txt")
 README_FILE = os.path.join(PROJECT_ROOT, "README.md")
-VERSION_FILE = os.path.join(PROJECT_ROOT, "myproject", "__init__.py")
+VERSION_FILE = os.path.join(PROJECT_ROOT, "src", "__init__.py")
 
 
 def get_requirements():
@@ -35,11 +35,11 @@ def get_version():
 
 
 setup(
-    name="myproject",
+    name="src",
     version=get_version(),
     description="",
-    author="Me",
-    url="https://github.com/karink520/myproject",
+    author="Anna Haensch",
+    url="https://github.com/annahaensch/OpArt_Curation_Tool",
     packages=find_packages(),
     install_requires=get_requirements(),
     long_description=get_long_description(),
