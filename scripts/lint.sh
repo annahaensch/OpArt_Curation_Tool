@@ -9,5 +9,5 @@ python -m black --line-length 100 $(git ls-files '*.py')
 echo "Success!"
 
 echo "Type checking with mypy..."
-mypy --ignore-missing-imports "${SRC_DIR}"/src/
+mypy --ignore-missing-imports $(git ls-files '*.py')
 echo "Success!"
