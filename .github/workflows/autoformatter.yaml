@@ -15,4 +15,4 @@ jobs:
           pip install pytest-cov
       - name: Run Linters
         run: |
-          bash scripts/lint.sh
+          python -m black --line-length 100 $(git ls-files '*.py')
