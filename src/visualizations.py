@@ -15,7 +15,6 @@ import geopandas
 import contextily as ctx
 
 
-
 import src as sc
 
 
@@ -75,7 +74,7 @@ def campus_building_map():
     names = sc.hall_url_name_dict
 
     # Opening JSON file
-    with open("../data/hall_dict.json","r", encoding="utf-8") as file:
+    with open("../data/hall_dict.json", "r", encoding="utf-8") as file:
         hall_dict = json.load(file)
 
     # Load campus building detials.
@@ -123,14 +122,14 @@ def campus_building_map():
     x_coord = geo_df[geo_df["name"] == "Goddard Chapel"].geometry.x
     y_coord = geo_df[geo_df["name"] == "Goddard Chapel"].geometry.y
 
-    ax.annotate("Goddard Chapel", xy=(x_coord, y_coord), xytext=(-40, 7),
-        textcoords="offset points")
+    ax.annotate(
+        "Goddard Chapel", xy=(x_coord, y_coord), xytext=(-40, 7), textcoords="offset points"
+    )
 
     x_coord = geo_df[geo_df["name"] == "Gifford House"].geometry.x
     y_coord = geo_df[geo_df["name"] == "Gifford House"].geometry.y
 
-    ax.annotate("Gifford House", xy=(x_coord, y_coord), xytext=(-40, 7),
-        textcoords="offset points")
+    ax.annotate("Gifford House", xy=(x_coord, y_coord), xytext=(-40, 7), textcoords="offset points")
 
     for key, val in color_map.items():
         plt.scatter([], [], color=val, label=key)
@@ -265,7 +264,7 @@ def beeswarm_building_gender(demo_cat, building_list=[]):
     axs.scatter([], [], color="#f1db54", s=[12], label="Man")
     axs.scatter([], [], color="#c85194", s=[12], label="Woman")
     axs.scatter([], [], color=COLOR_MAP["teal"], s=[12], label="Transgender or Non-Binary")
-    #handles, labels = axs.get_legend_handles_labels()
+    # handles, labels = axs.get_legend_handles_labels()
     plt.show()
 
 

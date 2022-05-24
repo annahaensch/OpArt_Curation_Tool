@@ -14,6 +14,5 @@ from .visualizations import *
 from .preprocessing import *
 
 
-
 ROOT = os.popen("git rev-parse --show-toplevel").read().split("\n")[0]
 sys.path.append(ROOT)
