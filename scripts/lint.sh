@@ -11,3 +11,7 @@ echo "Success!"
 echo "Type checking with mypy..."
 mypy --ignore-missing-imports $(git ls-files '*.py')
 echo "Success!"
+
+echo "Checking code style with pylint..."
+python -m pylint $(git ls-files '*.py')
+echo "Success!"
