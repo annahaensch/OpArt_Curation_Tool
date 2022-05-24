@@ -38,8 +38,6 @@ setup(
     name="src",
     version=get_version(),
     description="",
-    author="Anna Haensch",
-    url="https://github.com/annahaensch/OpArt_Curation_Tool",
     packages=find_packages(),
     install_requires=get_requirements(),
     long_description=get_long_description(),
