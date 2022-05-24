@@ -34,7 +34,7 @@ COLOR_MAP = {
 
 def assignment_heatmat(assignment_df):
     """Returns heatmap of art/building assignment probabilities."""
-    fig, ax = plt.subplots(figsize=(10, 12))
+    fig, ax = plt.subplots(figsize=(10, 12))  # pylint: disable=unused-variable
     assignment = assignment_df.values
 
     # Create masked array to make 0 values transparent
@@ -96,7 +96,7 @@ def campus_building_map():
 
     medford_df = loc_df[loc_df["latitude"] >= 42.4]
 
-    fig, ax = plt.subplots(figsize=(10, 10))
+    fig, ax = plt.subplots(figsize=(10, 10))  # pylint: disable=unused-variable
 
     # Create geopandas dataframe
     geo_df = geopandas.GeoDataFrame(
@@ -141,7 +141,7 @@ def campus_building_map():
 
     boston_df = loc_df[loc_df["latitude"] < 42.4]
 
-    fig, ax = plt.subplots(figsize=(10, 10))
+    fig, ax = plt.subplots(figsize=(10, 10))  # pylint: disable=unused-variable
 
     # Create geopandas dataframe
     geo_df = geopandas.GeoDataFrame(
@@ -178,7 +178,9 @@ def campus_building_map():
     plt.show()
 
 
-def beeswarm_building_gender(demo_cat, building_list=[]):
+def beeswarm_building_gender(
+    demo_cat, building_list=[]
+):  # pylint: disable=dangerous-default-value, too-many-locals
     """Returns beeswarm plot of counts by race and gender.
 
     Input:
@@ -199,7 +201,9 @@ def beeswarm_building_gender(demo_cat, building_list=[]):
     n_rows = int(math.ceil(len(building_list) ** (1 / 2)))
     n_cols = math.ceil(len(building_list) / n_rows)
 
-    fig, ax = plt.subplots(n_rows, n_cols, figsize=(14, 18), sharex=True, sharey=True)
+    fig, ax = plt.subplots(  # pylint: disable=unused-variable
+        n_rows, n_cols, figsize=(14, 18), sharex=True, sharey=True
+    )
 
     y_labels = list(student_df[demo_cat].value_counts().keys())
 
@@ -268,7 +272,9 @@ def beeswarm_building_gender(demo_cat, building_list=[]):
     plt.show()
 
 
-def beeswarm_gender(demo_df, demo_cat, title="Total Count by Race and Gender"):
+def beeswarm_gender(
+    demo_df, demo_cat, title="Total Count by Race and Gender"
+):  # pylint disable=too-many-locals
     """Returns beeswarm plot of counts by race and gender.
 
     Input:
@@ -293,7 +299,7 @@ def beeswarm_gender(demo_df, demo_cat, title="Total Count by Race and Gender"):
         for key, val in gender_dict.items():
             count_df.loc[group, key] = val
 
-    fig, ax = plt.subplots(figsize=(10, 7))
+    fig, ax = plt.subplots(figsize=(10, 7))  # pylint: disable=unused-variable
     y_tick_val = 0
     y_ticks = []
     for idx in count_df.index:
