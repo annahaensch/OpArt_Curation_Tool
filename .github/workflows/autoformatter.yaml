@@ -16,3 +16,4 @@ jobs:
       - name: Run Linters
         run: |
           python -m black --line-length 100 $(git ls-files '*.py')
+          mypy --ignore-missing-imports $(git ls-files '*.py')
