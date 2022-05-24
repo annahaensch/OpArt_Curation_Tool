@@ -1,0 +1,13 @@
+#
+##### OpArt Curation Tool requirements-dev.txt
+#
+##### requirements without version specifiers
+black
+black[jupyter]
+mypy
+pytest
+pytest-cov
+pylint
+
+##### requirements with version specifiers
+mypy==0.812
