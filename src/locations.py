@@ -1,22 +1,24 @@
 """
-The underlying student gender and race data was obtained from the public 
-Fall 2020 Enrollment Calculator (https://provost.tufts.edu/institutionalresearch/enrollment/).  
+The underlying student gender and race data was obtained from the public
+Fall 2020 Enrollment Calculator (https://provost.tufts.edu/institutionalresearch/enrollment/).
 Relevant data was downloaded, manually entered into an Excel spreadsheet and saved as csv:
 * `../data/2021_10_19_EC_school_gender_race.pdf`
 * `../data/2021_10_19_EC_school_gender_race.ods`
 * `../data/2021_10_19_EC_school_gender_race.csv`
 
 
-The underlying student region data was obtained from the 
-Fall 2020 Enrollment Calculator With Region (https://tableau.uit.tufts.edu/#/site/IR/workbooks/6160/views) 
-(provided by Christina Butler, Director of the Tufts Office of Institutional Research 
--- link might be password protected, but AH has access).Relevant data was 
+The underlying student region data was obtained from the
+Fall 2020 Enrollment Calculator With Region
+(https://tableau.uit.tufts.edu/#/site/IR/workbooks/6160/views)
+(provided by Christina Butler, Director of the Tufts Office of Institutional Research
+-- link might be password protected, but AH has access).Relevant data was
 downloaded, manually entered into an Excel spreadsheet and saved as csv:
 
 * `../data/2021_10_04_EC_school_gender_region.pdf`
 * `../data/2021_10_04_EC_school_gender_region.ods`
 * `../data/2021_10_04_EC_school_gender_region.csv`
 """
+
 import pandas as pd
 import numpy as np
 import json
@@ -156,7 +158,7 @@ def get_hall_dict(hall):
     dept = []
     for hall_type in ["Academic Building", "Residence Halls", "Other"]:
         if len(dept) == 0:
-            url = "https://m.tufts.edu/tufts_mobile/map_all/detail?feed=maps_all&id=maps_all%2F{}%2F{}&parentId=maps_all%2F{}".format(
+            url = "https://m.tufts.edu/tufts_mobile/map_all/detail?feed=maps_all&id=maps_all%2F{}%2F{}&parentId=maps_all%2F{}".format( # pylint: disable=line-too-long
                 hall_type.replace(" ", "%20"), hall_name, hall_type.replace(" ", "%20")
             )
             # Request specified url
@@ -173,17 +175,17 @@ def get_hall_dict(hall):
                 hall_dict["hall_type"] = hall_type
 
                 # Try to get latitude and longitude from Tufts page.
-                for p in [s.text for s in soup.find_all("p")]:
-                    if "GPS Coordinates: " in p:
-                        coord = p.strip("GPS Coordinates: ")
+                for par in [s.text for s in soup.find_all("p")]:
+                    if "GPS Coordinates: " in par:
+                        coord = par.strip("GPS Coordinates: ")
 
                         # Latitude and longitude are listed backwards on the Tufts website.
                         hall_dict["latitude"] = float(coord.split(", ")[1])
                         hall_dict["longitude"] = float(coord.split(", ")[0])
 
                 # Get the list of departments from the Tufts page.
-                for l in soup.find_all("li"):
-                    dept += [str(s.text) for s in l.find_all("strong")]
+                for l_item in soup.find_all("li"):
+                    dept += [str(s.text) for s in l_item.find_all("strong")]
 
                 # If no departments were listed, and "Departments Unknown" to depts.
                 if len(dept) == 0:
@@ -221,7 +223,7 @@ def print_hall_dictionary_to_json():
     # Fix Lane Hall
     hall_dict["lane_hall"]["hall_type"] = "Academic Building"
 
-    with open(ROOT + "/data/hall_dict.json", "w") as outfile:
+    with open(f"{ROOT}/data/hall_dict.json", "w", encoding="utf-8") as outfile:
         json.dump(hall_dict, outfile)
 
 
@@ -232,11 +234,11 @@ def get_hall_by_school_table():
     student_df = get_student_enrollment_data()
     schools = list(student_df["school"].unique())
 
-    with open(ROOT + "/data/hall_dict.json") as json_file:
+    with open(f"{ROOT}/data/hall_dict.json", encoding="utf-8") as json_file:
         hall_dict = json.load(json_file)
 
     loc_df = pd.DataFrame(columns=["name", "type"])
-    loc_df["name"] = [k for k in hall_dict.keys()]
+    loc_df["name"] = list(hall_dict.keys())
     loc_df["type"] = [v["hall_type"] for v in hall_dict.values()]
     loc_df.sort_values(by=["name"], inplace=True)
 
