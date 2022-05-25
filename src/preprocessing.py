@@ -565,14 +565,6 @@ if __name__ == "__main__":
     # Check if hall_dict.json exists, and if not, create it.
     exists = os.path.exists(ROOT + "/data/hall_dict.json")
     if exists == False:
-        logging.info(
-            "\n Scaping hall data, this requires a network connection and takes a few moments..."
-        )
-
-        hall_dict = {}
-        for hall in halls:
-            hall_dict[hall] = sc.get_hall_dict(hall)
-            with open(ROOT + "/data/hall_dict.json", "w") as fp:
-                json.dump(hall_dict, fp)
+        logging.info("\n Make sure you download the latest hall_dict from github.")
     logging.info("\n Processing hall dataframe...")
-    sc.get_hall_by_school_table()
+    sc.get_hall_by_school_table(student_df=student_df)

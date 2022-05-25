@@ -18,21 +18,21 @@ downloaded, manually entered into an Excel spreadsheet and saved as csv:
 * `../data/2021_10_04_EC_school_gender_region.ods`
 * `../data/2021_10_04_EC_school_gender_region.csv`
 """
+import os
+import sys
+import json
+import logging
+import requests
 
 import pandas as pd
 import numpy as np
-import json
-import logging
-import os
-import sys
-from bs4 import BeautifulSoup
-import requests
 
+from bs4 import BeautifulSoup
 
 ROOT = os.popen("git rev-parse --show-toplevel").read().split("\n")[0]
 sys.path.append(ROOT)
 
-import src as sc
+import src as sc  # pylint: disable=wrong-import-position
 
 # These are latitude and longitude values copied by hand from google.
 hall_loc_dict_google = {
@@ -158,7 +158,7 @@ def get_hall_dict(hall):
     dept = []
     for hall_type in ["Academic Building", "Residence Halls", "Other"]:
         if len(dept) == 0:
-            url = "https://m.tufts.edu/tufts_mobile/map_all/detail?feed=maps_all&id=maps_all%2F{}%2F{}&parentId=maps_all%2F{}".format( # pylint: disable=line-too-long
+            url = "https://m.tufts.edu/tufts_mobile/map_all/detail?feed=maps_all&id=maps_all%2F{}%2F{}&parentId=maps_all%2F{}".format(  # pylint: disable=line-too-long, consider-using-f-string
                 hall_type.replace(" ", "%20"), hall_name, hall_type.replace(" ", "%20")
             )
             # Request specified url
@@ -227,11 +227,8 @@ def print_hall_dictionary_to_json():
         json.dump(hall_dict, outfile)
 
 
-def get_hall_by_school_table():
-    """
-    Return num_halls x num_schools one-hot table.
-    """
-    student_df = get_student_enrollment_data()
+def get_hall_by_school_table(student_df):
+    """Return num_halls x num_schools one-hot table."""
     schools = list(student_df["school"].unique())
 
     with open(f"{ROOT}/data/hall_dict.json", encoding="utf-8") as json_file:
@@ -242,26 +239,26 @@ def get_hall_by_school_table():
     loc_df["type"] = [v["hall_type"] for v in hall_dict.values()]
     loc_df.sort_values(by=["name"], inplace=True)
 
-    locs = [l for l in loc_df["name"]]
-    hall_df = pd.DataFrame(
+    locs = list(loc_df["name"])
+    create_hall_df = pd.DataFrame(
         0, index=locs, columns=schools + ["General Administration", "Residence Hall", "Public Use"]
     )
 
     for hall in loc_df[loc_df["type"] == "Residence Halls"]["name"]:
-        hall_df.loc[hall, "Residence Hall"] = 1
+        create_hall_df.loc[hall, "Residence Hall"] = 1
 
-    for h in hall_df.index:
-        depts = hall_school_dict[h]
+    for h_idx in create_hall_df.index:
+        depts = hall_school_dict[h_idx]
 
-        hall_df.loc[h, depts] = 1
+        create_hall_df.loc[h_idx, depts] = 1
 
-    hall_df.to_csv(ROOT + "/data/hall_df.csv")
+    create_hall_df.to_csv(f"{ROOT}/data/hall_df.csv")
 
-    return hall_df
+    return create_hall_df
 
 
 def get_student_enrollment_data():
-    # df_total = sc.process_student_dataframe()
+    """Read student enrollment data."""
     df_total = pd.read_csv(
         ROOT + "/data/Tufts_2021_Fall_Enrollment_Calculator_Data.csv", index_col=0
     )
@@ -282,7 +279,7 @@ def get_student_enrollment_data():
     df_students.reset_index(inplace=True)
     df_students.rename(columns={"index": "student_id"}, inplace=True)
 
-    gender_map, race_map, region_map = sc.get_mapping_dicts()
+    gender_map, race_map, region_map = sc.get_mapping_dicts()  # pylint: disable=unused-variable
 
     df_students["gender_enum"] = [gender_map[g] for g in df_students["gender"]]
     df_students["race_enum"] = [race_map[g] for g in df_students["race"]]
@@ -293,7 +290,7 @@ def get_student_enrollment_data():
 
 
 def fill_academic_building(building, student_df, hall_df):
-
+    """Fill academic buildings with students with randomness."""
     total_enrollment = student_df.shape[0]
     depts = [c for c in hall_df.columns if hall_df.loc[building, c] == 1]
     df = student_df[student_df["school"].isin(depts)]
@@ -315,7 +312,7 @@ def fill_academic_building(building, student_df, hall_df):
 
 
 def fill_residence_halls(student_df, hall_df):
-
+    """Fill residence halls with randomness."""
     res_hall_dict = {
         "houston_hall": 256,
         "sophia_gordon_hall": 256,
@@ -325,9 +322,9 @@ def fill_residence_halls(student_df, hall_df):
 
     assigned = []
     remainder_df = student_df.copy()
-    for k, v in res_hall_dict.items():
+    for key, val in res_hall_dict.items():
 
-        if k == "capen_house":
+        if key == "capen_house":
             idx1 = np.random.choice(
                 remainder_df[
                     remainder_df["race"].isin(
@@ -337,12 +334,13 @@ def fill_residence_halls(student_df, hall_df):
                 5,
             )
             idx2 = np.random.choice(
-                remainder_df[remainder_df["race"].isin(["Black or African American"])].index, v - 5
+                remainder_df[remainder_df["race"].isin(["Black or African American"])].index,
+                val - 5,
             )
             idx = list(idx1) + list(idx2)
 
         else:
-            idx = np.random.choice(remainder_df.index, v)
+            idx = np.random.choice(remainder_df.index, val)
 
         df = remainder_df.loc[idx, :]
 
@@ -351,19 +349,20 @@ def fill_residence_halls(student_df, hall_df):
 
         # Add in additional traffic if building holds academic, or admin departments.
         df_academic = fill_academic_building(
-            building=k, student_df=student_df[~student_df.index.isin(idx)], hall_df=hall_df
+            building=key, student_df=student_df[~student_df.index.isin(idx)], hall_df=hall_df
         )
 
         df = pd.concat([df, df_academic])
-        df.to_csv(ROOT + "/data/filled_buildings/{}_students.csv".format(k))
+        df.to_csv(f"{ROOT}/data/filled_buildings/{key}_students.csv")
 
     return df
 
 
 def fill_buildings(student_df, hall_df):
-    exists = os.path.exists(ROOT + "/data/filled_buildings")
-    if exists == False:
-        os.mkdir(ROOT + "/data/filled_buildings")
+    """Fill buildings with randomness."""
+    exists = os.path.exists(f"{ROOT}/data/filled_buildings")
+    if exists is False:
+        os.mkdir(f"{ROOT}/data/filled_buildings")
 
     logging.info("\n Filling residence halls...")
     fill_residence_halls(student_df=student_df, hall_df=hall_df)
@@ -373,14 +372,12 @@ def fill_buildings(student_df, hall_df):
         if hall_df.loc[building, "Residence Hall"] == 0:
             df = fill_academic_building(building, student_df=student_df, hall_df=hall_df)
 
-            df.to_csv(ROOT + "/data/filled_buildings/{}_students.csv".format(building))
-
-    return None
+            df.to_csv(f"{ROOT}/data/filled_buildings/{building}_students.csv")
 
 
 if __name__ == "__main__":
 
-    hall_df = get_hall_by_school_table()
     student_df = get_student_enrollment_data()
+    hall_df = get_hall_by_school_table(student_df=student_df)
 
     fill_buildings(student_df=student_df, hall_df=hall_df)
