@@ -192,7 +192,7 @@ def beeswarm_building_gender(
     """
     my_path = "../data/filled_buildings/"
     student_df = sc.get_student_enrollment_data()
-    hall_df = sc.get_hall_by_school_table()
+    hall_df = sc.get_hall_by_school_table(student_df)
     if len(building_list) == 0:
         building_list = list(hall_df.index)
 

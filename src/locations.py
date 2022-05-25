@@ -377,7 +377,7 @@ def fill_buildings(student_df, hall_df):
 
 if __name__ == "__main__":
 
-    student_df = get_student_enrollment_data()
-    hall_df = get_hall_by_school_table(student_df=student_df)
+    current_student_df = get_student_enrollment_data()
+    current_hall_df = get_hall_by_school_table(student_df=current_student_df)
 
-    fill_buildings(student_df=student_df, hall_df=hall_df)
+    fill_buildings(student_df=current_student_df, hall_df=current_hall_df)
