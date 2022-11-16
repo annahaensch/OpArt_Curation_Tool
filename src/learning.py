@@ -292,7 +292,7 @@ def compute_cost_matrix(
     return cost_df
 
 
-def get_normalizing_constants(hall_df, student_df, art_df):
+def get_normalizing_constants(hall_df, student_df, art_df, curator_df):
     """Return normalizing contstants for lambda and tau
 
     Input:
@@ -324,6 +324,7 @@ def get_normalizing_constants(hall_df, student_df, art_df):
     term1 = np.zeros((beta_values.shape[0], iterations))
     term2 = np.zeros((beta_values.shape[0], iterations))
     term3 = np.zeros((beta_values.shape[0], iterations))
+    term4 = np.zeros((beta_values.shape[0], iterations))
     for m in range(beta_values.shape[0]):
         # Compute full n_buildings x n_artworks cost matrix.
         cost_df = sc.compute_cost_matrix(
@@ -343,18 +344,25 @@ def get_normalizing_constants(hall_df, student_df, art_df):
             term1[m, k] = np.trace(np.matmul(np.transpose(cost_df.values), P))
             term2[m, k] = np.linalg.norm(np.sum(P, axis=0) - art_capacity) ** 2
             term3[m, k] = np.linalg.norm(P - current_assignment) ** 2
+            term4[m, k] = np.trace(np.matmul(np.transpose(curator_df.values*100000), P))
 
     term1_avg = np.mean(term1)
     term2_avg = np.mean(term2)
     term3_avg = np.mean(term3)
+    term4_avg = np.mean(term4)
 
     norm_lam_factor = term1_avg / term2_avg
     norm_tau_factor = term1_avg / term3_avg
+    judge = curator_df.values == 0
+    if judge.all() == True :
+        norm_gam_factor = 1
+    else:
+        norm_gam_factor = term1_avg / term4_avg
 
-    return norm_lam_factor, norm_tau_factor
+    return norm_lam_factor, norm_tau_factor, norm_gam_factor
 
 
-def learn_optimal_assignment(hall_df, student_df, art_df, cost_df, lam, tau, init, iterations):
+def learn_optimal_assignment(hall_df, student_df, art_df, cost_df, curator_df, lam, tau, gam, init, iterations, algo):
     """Return n_buildings x n_artworkks assignment array
 
     Input:
@@ -367,6 +375,8 @@ def learn_optimal_assignment(hall_df, student_df, art_df, cost_df, lam, tau, ini
             constraints in optimization.
         tau: (float) tau factor determines weight of preference for current
             assignment in optimization.
+        gam: (float) gamma factor determines binary weight of curatorial contraints
+            in optimization where 1 stands for assignment allowed and 0 stands for restricted.
         init: (int) one of the following:
                 1 - identity matrix initialization
                 2 - uniform initialization
@@ -378,23 +388,35 @@ def learn_optimal_assignment(hall_df, student_df, art_df, cost_df, lam, tau, ini
         num_buildings x num_arts assignment dataframe where the entry in row n
         and column m is the copies of artwork m to by hung in building n.
     """
-    C = cost_df.values
 
-    # Compute building capacity
+    # Compute building capacity and current assignment
     building_capacity_df = sc.get_building_capacity_df()
-    building_capacity = building_capacity_df.values
     num_buildings = building_capacity_df.shape[0]
-
+    current_assignment_df = pd.read_csv(ROOT + "/data/current_assignment_df.csv", index_col=0)
+    to_drop = []
+    for i in range(curator_df.shape[0]):
+        judge = curator_df.iloc[i, :] == 0
+        if judge.any() == False:
+            num_buildings -= 1
+            to_drop.append(curator_df.index[i])
+    if to_drop:
+        building_capacity = building_capacity_df.drop(to_drop).values
+        current_assignment = current_assignment_df.drop(to_drop).values
+        C = cost_df.drop(to_drop).values
+        U = curator_df.drop(to_drop).values*100000
+    else:
+        building_capacity = building_capacity_df.values
+        current_assignment = current_assignment_df.values
+        C = cost_df.values
+        U = curator_df.values*100000
+    
     # Compute art capacity
     art_capacity_df = sc.get_art_capacity_with_downsampling(
         student_df, art_df, categories=["gender", "race"]
     )
     art_capacity = art_capacity_df["capacity"].values
     num_arts = art_capacity_df.shape[0]
-
-    # Get current assignment
-    current_assignment_df = pd.read_csv(ROOT + "/data/current_assignment_df.csv", index_col=0)
-    current_assignment = current_assignment_df.values
+    
 
     dt = 0.5 * (1 / ((lam * num_buildings) + tau))  # step size
     t = np.arange(1, num_arts + 1)
@@ -412,14 +434,45 @@ def learn_optimal_assignment(hall_df, student_df, art_df, cost_df, lam, tau, ini
         P = sample_general_simplex(
             n_rows=num_buildings, n_columns=num_arts, capacity=building_capacity
         )
+    
+    # Converging methods.
+    if algo == "gd":
+        P, energy = gradient_descent(ones_vector, art_capacity, dt, t, P, C, U, current_assignment, num_buildings, building_capacity, lam, 
+                                     tau, gam, iterations) 
+        # print energy to output file.
+        exists = os.path.exists(ROOT + "/output")
+        if exists == False:
+            os.mkdir(ROOT + "/output")
+            d = datetime.now().strftime("%Y%m%d%H%M%S")
+            filename = f"energy_df_{d}.csv"
+            pd.DataFrame(energy).to_csv(ROOT + "/output/" + filename)
+            logging.info(f"\n Energy printed to : ../output/{filename}")
+    elif algo == "fw":
+        P, energy= frank_wolfe(ones_vector, art_capacity, P, C, U, current_assignment, building_capacity, lam, tau, gam, iterations)
+        # print energy to output file.
+        exists = os.path.exists(ROOT + "/output")
+        if exists == False:
+            os.mkdir(ROOT + "/output")
+            d = datetime.now().strftime("%Y%m%d%H%M%S")
+            filename = f"energy_df_{d}.csv"
+            pd.DataFrame(energy).to_csv(ROOT + "/output/" + filename)
+            logging.info(f"\n Energy printed to : ../output/{filename}")
+
+    assignment_df = pd.DataFrame(P, index=cost_df.drop(to_drop).index, columns=art_capacity_df["string"].values)
+    for t in to_drop:
+          assignment_df.loc[t] = np.zeros(assignment_df.shape[1]).astype(int)
+    assignment_df.sort_index(inplace = True)
+
+    return assignment_df
+
+def gradient_descent(ones_vector, art_capacity, dt, t, P, C, U, current_assignment, num_buildings, building_capacity, lam, tau, gam, iterations):
     energy = np.zeros((iterations, 1))
     for k in range(iterations):
-        # Gradient descent.
         term2b = np.matmul(
             ones_vector, np.matmul(np.transpose(ones_vector), P) - np.transpose(art_capacity)
         )
 
-        P = P - dt * C - lam * dt * (term2b) - tau * dt * (P - current_assignment)
+        P = P - dt * C - lam * dt * (term2b) - tau * dt * (P - current_assignment) - gam * dt * U
         # Projection
         for i in range(num_buildings):
             v = P[i, :]
@@ -435,23 +488,35 @@ def learn_optimal_assignment(hall_df, student_df, art_df, cost_df, lam, tau, ini
         # Compute objective value
         energy1 = np.trace(np.matmul(np.transpose(C), P))
         energy2 = 0.5 * lam * np.linalg.norm(np.sum(P, axis=0) - art_capacity) ** 2
-        energy3 = 0.5 * tau * np.linalg.norm(P - current_assignment) ** 2
-        energy[k] = energy1 + energy2 + energy3
-
-    # print energy to output file.
-    exists = os.path.exists(ROOT + "/output")
-    if exists == False:
-        os.mkdir(ROOT + "/output")
-
-    d = datetime.now().strftime("%Y%m%d%H%M%S")
-    filename = f"energy_df_{d}.csv"
-    pd.DataFrame(energy).to_csv(ROOT + "/output/" + filename)
-    logging.info(f"\n Energy printed to : ../output/{filename}")
-
-    assignment_df = pd.DataFrame(P, index=cost_df.index, columns=art_capacity_df["string"].values)
-
-    return assignment_df
-
+        energy3 = 0.5 * tau * np.linalg.norm(P - current_assignment, "fro") ** 2
+        energy4 = gam * np.trace(np.matmul(np.transpose(U), P))
+        energy[k] = energy1 + energy2 + energy3 + energy4
+    return P, energy
+            
+def frank_wolfe(ones_vector, art_capacity, P, C, U, current_assignment, building_capacity, lam, tau, gam, iterations):
+    energy = np.zeros((iterations, 1))
+    for k in range(1, iterations+1):
+        term2b = np.matmul(
+            ones_vector, np.matmul(np.transpose(ones_vector), P) - np.transpose(art_capacity)
+        )
+        z = C + lam*(term2b) + tau*(P - current_assignment) + gam*U
+        d = []
+        for i in range(P.shape[0]):
+            sorted_row = np.argsort(z[i])
+            d_row = [0]* len(z[i])
+            d_row[sorted_row[0]] = building_capacity[i][0]
+            d.append(d_row)
+        d = np.array(d)
+        P = d*(2/(k+2)) + (1 - 2/(k+2))*P
+    
+        # Compute objective value
+        energy1 = np.trace(np.matmul(np.transpose(C), P))
+        energy2 = 0.5 * lam * np.linalg.norm(np.sum(P, axis=0) - art_capacity) ** 2
+        energy3 = 0.5 * tau * np.linalg.norm(P - current_assignment, "fro") ** 2
+        energy4 = gam * np.trace(np.matmul(np.transpose(U), P))
+        energy[k-1] = energy1 + energy2 + energy3 + energy4
+    P = np.around(P, 4)
+    return P, energy
 
 def validate_assignment(assignment_df):
     """Print validation dataframe
