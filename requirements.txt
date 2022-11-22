@@ -18,4 +18,4 @@ seaborn
 sklearn
 
 ##### requirements with version specifiers
-#contextily==1.0.1
+contextily==1.0.1
