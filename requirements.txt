@@ -14,7 +14,9 @@ pdfplumber
 pyarrow
 requests
 scipy
+seaborn
 sklearn
+streamlit
 
 ##### requirements with version specifiers
 #contextily==1.0.1

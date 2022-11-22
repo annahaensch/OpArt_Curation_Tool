@@ -362,7 +362,8 @@ def get_normalizing_constants(hall_df, student_df, art_df, curator_df):
     return norm_lam_factor, norm_tau_factor, norm_gam_factor
 
 
-def learn_optimal_assignment(hall_df, student_df, art_df, cost_df, curator_df, lam, tau, gam, init, iterations, algo):
+def learn_optimal_assignment(hall_df, student_df, art_df, cost_df, curator_df, lam, tau, 
+                    gam, init, iterations, algo, custom_init = None):
     """Return n_buildings x n_artworkks assignment array
 
     Input:
@@ -382,7 +383,11 @@ def learn_optimal_assignment(hall_df, student_df, art_df, cost_df, curator_df, l
                 2 - uniform initialization
                 3 - current assignment initialization
                 4 - random permutation initialization
+                5 - custom initialization
         iterations: (int) number of iterations of gradient descent
+        algo: (str) choose learning algorithm, "fw" or "gd".
+        custom_init: (array) if init = 5 then this is the chosen 
+            initialization matrix.
 
     Returns:
         num_buildings x num_arts assignment dataframe where the entry in row n
@@ -435,6 +440,10 @@ def learn_optimal_assignment(hall_df, student_df, art_df, cost_df, curator_df, l
         P = 1 / (num_arts) * np.divide(np.ones((num_buildings, num_arts)), building_capacity)
     elif init == 3:
         P = current_assignment
+    elif init == 5:
+        if custom_init is None:
+            raise ValueError("You must provide a custom initialization or choose a different init.")
+        P = custom_init
     else:
         P = sample_general_simplex(
             n_rows=num_buildings, n_columns=num_arts, capacity=building_capacity
