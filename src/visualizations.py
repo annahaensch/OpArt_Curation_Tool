@@ -217,7 +217,7 @@ def beeswarm_building_gender(
         my_file = my_path + name + "_students.csv"
         name = sc.hall_short_name_dict.get(name, name)
 
-        building_df = pd.read_csv(my_file)
+        building_df = pd.read_csv(my_file.lower())
         grouped_df = building_df.groupby(demo_cat)
 
         count_df = pd.DataFrame(0, index=y_labels, columns=["Transgender", "Woman", "Man"])
