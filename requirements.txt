@@ -14,6 +14,7 @@ pdfplumber
 pyarrow
 requests
 scipy
+seaborn
 sklearn
 
 ##### requirements with version specifiers
