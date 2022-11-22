@@ -390,6 +390,9 @@ def learn_optimal_assignment(hall_df, student_df, art_df, cost_df, curator_df, l
     """
 
     # Compute building capacity and current assignment
+    import time
+    start_time = time.time()
+    
     building_capacity_df = sc.get_building_capacity_df()
     num_buildings = building_capacity_df.shape[0]
     current_assignment_df = pd.read_csv(ROOT + "/data/current_assignment_df.csv", index_col=0)
@@ -403,7 +406,9 @@ def learn_optimal_assignment(hall_df, student_df, art_df, cost_df, curator_df, l
         building_capacity = building_capacity_df.drop(to_drop).values
         current_assignment = current_assignment_df.drop(to_drop).values
         C = cost_df.drop(to_drop).values
-        U = curator_df.drop(to_drop).values*100000
+        U = curator_df.drop(to_drop).values*100000  
+        #The higher the U, the stronger restriction the gam poses. Since the curator_df only allows 0,1 inputs, scale up the ones by 100000 
+        #to ensure absolute restriction on that cell
     else:
         building_capacity = building_capacity_df.values
         current_assignment = current_assignment_df.values
@@ -462,10 +467,38 @@ def learn_optimal_assignment(hall_df, student_df, art_df, cost_df, curator_df, l
     for t in to_drop:
           assignment_df.loc[t] = np.zeros(assignment_df.shape[1]).astype(int)
     assignment_df.sort_index(inplace = True)
+    
+    end_time = time.time()
+    run_time = end_time - start_time
 
-    return assignment_df
+    return assignment_df, run_time
 
 def gradient_descent(ones_vector, art_capacity, dt, t, P, C, U, current_assignment, num_buildings, building_capacity, lam, tau, gam, iterations):
+    """Return n_buildings x n_artworkks assignment array and the sum of energy for each term in the loss function for each iteration
+
+    Input (all inputs below are results from the learn_optimal_assignment function):
+        ones_vector(array) an n*1 array of ones where n is the number of buildings
+        art_capacity(array) an array of art capacities
+        dt(float) a constant for step size
+        t(list) a range of integers from 1 to the number of arts
+        P(dataframe) the initialized num_buildings x num_arts assignment dataframe to be trained
+        C(array) a multi-dimentinal array of the values of the cost dataframe
+        U(dataframe) the curator dataframe scale by 100000
+        current_assignment(dataframe) the current assigment matrix
+        num_buildings(integer) a constant for the number of buildings
+        building capacity(dataframe) a num_buildings*2 dataframe recording the building names and their capacities
+        lam: (float) lambda factor determines weight of artwork capacity
+            constraints in optimization.
+        tau: (float) tau factor determines weight of preference for current
+            assignment in optimization.
+        gam: (float) gamma factor determines binary weight of curatorial contraints
+            in optimization where 1 stands for assignment allowed and 0 stands for restricted.
+        iterations: (int) number of iterations of gradient descent
+
+    Returns:
+        num_buildings x num_arts assignment dataframe where the entry in row n
+        and column m is the copies of artwork m to by hung in building n.
+    """
     energy = np.zeros((iterations, 1))
     for k in range(iterations):
         term2b = np.matmul(
@@ -494,6 +527,31 @@ def gradient_descent(ones_vector, art_capacity, dt, t, P, C, U, current_assignme
     return P, energy
             
 def frank_wolfe(ones_vector, art_capacity, P, C, U, current_assignment, building_capacity, lam, tau, gam, iterations):
+    """Return n_buildings x n_artworkks assignment array and the sum of energy for each term in the loss function for each iteration
+
+    Input (all inputs below are results from the learn_optimal_assignment function):
+        ones_vector(array) an n*1 array of ones where n is the number of buildings
+        art_capacity(array) an array of art capacities
+        dt(float) a constant for step size
+        t(list) a range of integers from 1 to the number of arts
+        P(dataframe) the initialized num_buildings x num_arts assignment dataframe to be trained
+        C(array) a multi-dimentinal array of the values of the cost dataframe
+        U(dataframe) the curator dataframe scale by 100000
+        current_assignment(dataframe) the current assigment matrix
+        num_buildings(integer) a constant for the number of buildings
+        building capacity(dataframe) a num_buildings*2 dataframe recording the building names and their capacities
+        lam: (float) lambda factor determines weight of artwork capacity
+            constraints in optimization.
+        tau: (float) tau factor determines weight of preference for current
+            assignment in optimization.
+        gam: (float) gamma factor determines binary weight of curatorial contraints
+            in optimization where 1 stands for assignment allowed and 0 stands for restricted.
+        iterations: (int) number of iterations of gradient descent
+
+    Returns:
+        num_buildings x num_arts assignment dataframe where the entry in row n
+        and column m is the copies of artwork m to by hung in building n.
+    """
     energy = np.zeros((iterations, 1))
     for k in range(1, iterations+1):
         term2b = np.matmul(
