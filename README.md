@@ -58,4 +58,5 @@ To help you on your way, several notebooks have been provided in `notebooks` tha
 * `workflow_demo.ipynb` demonstrates the basic work flow from running and validating an optimization.
 * `recreate_results_from_paper.ipynb` recreates the results in *A Recommender System for Equitable Public Art Curation and Installation*.
 
+[![DOI](https://zenodo.org/badge/438010706.svg)](https://zenodo.org/badge/latestdoi/438010706)
 
